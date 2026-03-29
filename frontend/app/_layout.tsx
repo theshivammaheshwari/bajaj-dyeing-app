@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useRouter, useSegments, Slot, usePathname } from 'expo-router';
+import { useRouter, Slot, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const router = useRouter();
-  const segments = useSegments();
   const pathname = usePathname();
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    // Keep auth state in sync after login/logout route transitions.
+    checkAuth();
+  }, [pathname]);
 
   const checkAuth = async () => {
     try {

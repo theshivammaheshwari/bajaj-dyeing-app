@@ -123,6 +123,23 @@ export default function Index() {
   };
 
   const handleLogout = () => {
+    const performLogout = async () => {
+      await AsyncStorage.removeItem('isAuthenticated');
+      if (Platform.OS === 'web') {
+        window.location.href = '/login';
+      } else {
+        router.replace('/login');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        performLogout();
+      }
+      return;
+    }
+
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -131,10 +148,7 @@ export default function Index() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.removeItem('isAuthenticated');
-            router.replace('/login');
-          },
+          onPress: performLogout,
         },
       ]
     );
