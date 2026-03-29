@@ -13,8 +13,9 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getBackendBaseUrl } from '../lib/api-base';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
 const MACHINES = [
   { id: 'm1', name: 'M1', capacity: 10.5, totalSprings: 7 },

@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { getBackendBaseUrl } from '../lib/api-base';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
 interface MachineTask {
   shade_id: string;
