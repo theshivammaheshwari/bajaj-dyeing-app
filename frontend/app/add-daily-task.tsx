@@ -288,8 +288,11 @@ export default function AddDailyTask() {
             )}
             {task.showShadeDropdown && !task.shadeId && (
               <View style={styles.shadeDropdown}>
-                <ScrollView style={styles.shadeDropdownScroll} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled" 
-                  style={{ maxHeight: 150 }}>
+                <ScrollView 
+                  style={[styles.shadeDropdownScroll, { maxHeight: 150 }]} 
+                  nestedScrollEnabled={true} 
+                  keyboardShouldPersistTaps="handled"
+                >
                   {getFilteredShades(task.shadeSearchText).slice(0, 10).map((shade) => (
                     <TouchableOpacity
                       key={shade.id}
@@ -742,151 +745,4 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
-  addTaskButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    color: '#aaa',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  shadeSearchInput: {
-    backgroundColor: '#0f0f1e',
-    borderRadius: 12,
-    padding: 14,
-    color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  selectedShade: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#2a3e2a',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  selectedShadeText: {
-    color: '#4CAF50',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  clearText: {
-    color: '#f44336',
-    fontSize: 16,
-    fontWeight: 'bold',
-    paddingHorizontal: 8,
-  },
-  shadeDropdown: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 8,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    maxHeight: 200,
-  },
-  shadeDropdownScroll: {
-    maxHeight: 200,
-  },
-  shadeDropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  shadeDropdownText: {
-    color: '#fff',
-    fontSize: 15,
-  },
-  noShadesText: {
-    color: '#888',
-    fontSize: 14,
-    padding: 12,
-    textAlign: 'center',
-  },
-  pickerContainer: {
-    backgroundColor: '#0f0f1e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333',
-    overflow: 'hidden',
-  },
-  picker: {
-    color: '#fff',
-    backgroundColor: '#0f0f1e',
-  },
-  input: {
-    backgroundColor: '#0f0f1e',
-    borderRadius: 12,
-    padding: 14,
-    color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  springRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  springInput: {
-    flex: 1,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  totalLabel: {
-    fontSize: 14,
-    color: '#aaa',
-    fontWeight: '600',
-  },
-  totalValue: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  errorText: {
-    color: '#f44336',
-  },
-  errorMessage: {
-    fontSize: 12,
-    color: '#f44336',
-    marginTop: 4,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#1a1a2e',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a3e',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
+
