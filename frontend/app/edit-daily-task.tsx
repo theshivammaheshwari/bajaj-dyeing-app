@@ -49,11 +49,11 @@ export default function EditDailyTask() {
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
   
   const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>({
-    m1: Array.from({ length: 5 }, (_, i) => ({ id: \`m1-\${i}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m2: Array.from({ length: 5 }, (_, i) => ({ id: \`m2-\${i}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m3: Array.from({ length: 5 }, (_, i) => ({ id: \`m3-\${i}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m4: Array.from({ length: 5 }, (_, i) => ({ id: \`m4-\${i}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m5: Array.from({ length: 5 }, (_, i) => ({ id: \`m5-\${i}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
   });
 
   const maxRows = Math.max(...Object.values(machineTasks).map(tasks => tasks.length), 5);
@@ -68,7 +68,7 @@ export default function EditDailyTask() {
   const fetchExistingTask = async () => {
     try {
       setLoading(true);
-      const response = await fetch(\`\${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/id/\${taskId}\`);
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/id/${taskId}`);
       const data = await response.json();
       if (data) {
         setDate(data.date);
@@ -76,7 +76,7 @@ export default function EditDailyTask() {
         MACHINES.forEach(m => {
           const apiTasks = data[m.id] || [];
           newMachineTasks[m.id] = apiTasks.map((t: any, idx: number) => ({
-            id: \`\${m.id}-\${idx}\`,
+            id: `${m.id}-${idx}`,
             shadeId: t.shade_id,
             shadeNumber: t.shade_number,
             springs2ply: t.springs_2ply.toString(),
@@ -86,7 +86,7 @@ export default function EditDailyTask() {
           }));
           while (newMachineTasks[m.id].length < 5) {
             newMachineTasks[m.id].push({
-              id: \`\${m.id}-\${newMachineTasks[m.id].length}\`,
+              id: `${m.id}-${newMachineTasks[m.id].length}`,
               shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: ''
             });
           }
@@ -102,7 +102,7 @@ export default function EditDailyTask() {
 
   const fetchShades = async () => {
     try {
-      const response = await fetch(\`\${EXPO_PUBLIC_BACKEND_URL}/api/shades\`);
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/shades`);
       const data = await response.json();
       const sortedShades = data.sort((a: Shade, b: Shade) => (parseInt(a.shade_number) || 0) - (parseInt(b.shade_number) || 0));
       setShades(sortedShades);
@@ -144,7 +144,7 @@ export default function EditDailyTask() {
     setMachineTasks(prev => {
       const next = { ...prev };
       MACHINES.forEach(m => {
-        next[m.id] = [...next[m.id], { id: \`\${m.id}-\${next[m.id].length}\`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }];
+        next[m.id] = [...next[m.id], { id: `${m.id}-${next[m.id].length}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }];
       });
       return next;
     });
@@ -159,7 +159,7 @@ export default function EditDailyTask() {
       const totalSprings = tasks.reduce((sum, t) => sum + (parseInt(t.springs2ply) || 0) + (parseInt(t.springs3ply) || 0), 0);
       
       if (totalSprings > machine.totalSprings) {
-        Alert.alert('Error', \`\${machine.name} exceeds capacity!\`);
+        Alert.alert('Error', `${machine.name} exceeds capacity!`);
         return;
       }
       if (tasks.length > 0) {
@@ -178,7 +178,7 @@ export default function EditDailyTask() {
     setLoading(true);
     try {
       const method = taskId ? 'PUT' : 'POST';
-      const url = taskId ? \`\${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/\${taskId}\` : \`\${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks\`;
+      const url = taskId ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${taskId}` : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
       const response = await fetch(url, {
         method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -224,7 +224,7 @@ export default function EditDailyTask() {
                       {t && (
                         <>
                           <TouchableOpacity onPress={() => setActiveTask(isActive ? null : { machineId: m.id, taskId: t.id })}>
-                            <Text style={[styles.cellShadeText, t.shadeNumber && styles.filledText]}>{t.shadeNumber ? \`#\${t.shadeNumber}\` : 'Shade'}</Text>
+                            <Text style={[styles.cellShadeText, t.shadeNumber && styles.filledText]}>{t.shadeNumber ? `#${t.shadeNumber}` : 'Shade'}</Text>
                           </TouchableOpacity>
                           {isActive ? (
                             <View style={styles.inlineEditor}>
@@ -236,7 +236,7 @@ export default function EditDailyTask() {
                                   <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                                     {getFilteredShades(t.shadeSearchText).map(s => (
                                       <TouchableOpacity key={s.id} style={styles.inlineDropdownItem} onPress={() => updateTask(m.id, t.id, 'shadeId', s.id)}>
-                                        <Text style={styles.inlineDropdownText}>#\${s.shade_number}</Text>
+                                        <Text style={styles.inlineDropdownText}>#${s.shade_number}</Text>
                                       </TouchableOpacity>
                                     ))}
                                   </ScrollView>
