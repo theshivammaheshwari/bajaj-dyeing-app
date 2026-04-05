@@ -419,7 +419,14 @@ export default function AddDailyTask() {
                           ) : (
                             <TouchableOpacity 
                               style={styles.cellSummary}
-                              onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}
+                              onPress={() => {
+                                // Close if already active, otherwise open
+                                if (activeTask?.machineId === machine.id && activeTask?.taskId === task.id) {
+                                  setActiveTask(null);
+                                } else {
+                                  setActiveTask({ machineId: machine.id, taskId: task.id });
+                                }
+                              }}
                             >
                               <View style={styles.summaryPlyRow}>
                                 <Text style={styles.summaryPlyText}>{task.springs2ply || 0}P</Text>
