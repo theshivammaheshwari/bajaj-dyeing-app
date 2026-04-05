@@ -101,6 +101,9 @@ export default function AddDailyTask() {
   };
 
   const updateTask = (machineId: string, taskId: string, field: string, value: string | boolean) => {
+    const machine = MACHINES.find(m => m.id === machineId);
+    const max = machine?.totalSprings || 0;
+
     if (field === 'shadeId') {
       const selectedShade = shades.find((s) => s.id === value);
       setMachineTasks({
@@ -115,6 +118,24 @@ export default function AddDailyTask() {
                 showShadeDropdown: false 
               }
             : task
+        ),
+      });
+    } else if (field === 'springs2ply' || field === 'springs3ply') {
+      const numVal = parseInt(value as string) || 0;
+      if (numVal < 0) return;
+      if (numVal > max) return;
+
+      const otherField = field === 'springs2ply' ? 'springs3ply' : 'springs2ply';
+      const otherVal = Math.max(0, max - numVal).toString();
+
+      setMachineTasks({
+        ...machineTasks,
+        [machineId]: machineTasks[machineId].map((task) =>
+          task.id === taskId ? { 
+            ...task, 
+            [field]: value,
+            [otherField]: otherVal 
+          } : task
         ),
       });
     } else {
@@ -240,111 +261,7 @@ export default function AddDailyTask() {
   };
 
   const renderTaskEditModal = () => {
-    if (!activeTask) return null;
-
-    const { machineId, taskId } = activeTask;
-    const task = machineTasks[machineId].find(t => t.id === taskId);
-    if (!task) return null;
-
-    return (
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <TouchableOpacity 
-            style={styles.closeModalButton}
-            onPress={() => setActiveTask(null)}
-          >
-            <Text style={styles.closeModalButtonText}>✕</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.modalTitle}>Edit {MACHINES.find(m => m.id === machineId)?.name} Task</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Search Shade Number</Text>
-            <TextInput
-              style={styles.shadeSearchInput}
-              placeholder="Type shade number..."
-              placeholderTextColor="#666"
-              value={task.shadeSearchText}
-              onChangeText={(value) => {
-                updateTask(machineId, task.id, 'shadeSearchText', value);
-                updateTask(machineId, task.id, 'showShadeDropdown', true);
-              }}
-              onFocus={() => updateTask(machineId, task.id, 'showShadeDropdown', true)}
-              keyboardType="number-pad"
-            />
-            {task.shadeId && (
-              <View style={styles.selectedShade}>
-                <Text style={styles.selectedShadeText}>Selected: Shade #{task.shadeNumber}</Text>
-                <TouchableOpacity 
-                  onPress={() => {
-                    updateTask(machineId, task.id, 'shadeId', '');
-                    updateTask(machineId, task.id, 'shadeNumber', '');
-                    updateTask(machineId, task.id, 'shadeSearchText', '');
-                  }}
-                >
-                  <Text style={styles.clearText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {task.showShadeDropdown && !task.shadeId && (
-              <View style={styles.shadeDropdown}>
-                <ScrollView 
-                  style={[styles.shadeDropdownScroll, { maxHeight: 150 }]} 
-                  nestedScrollEnabled={true} 
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {getFilteredShades(task.shadeSearchText).slice(0, 10).map((shade) => (
-                    <TouchableOpacity
-                      key={shade.id}
-                      style={styles.shadeDropdownItem}
-                      onPress={() => updateTask(machineId, task.id, 'shadeId', shade.id)}
-                    >
-                      <Text style={styles.shadeDropdownText}>Shade #{shade.shade_number}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  {getFilteredShades(task.shadeSearchText).length === 0 && (
-                    <Text style={styles.noShadesText}>No shades found</Text>
-                  )}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.springRow}>
-            <View style={styles.springInput}>
-              <Text style={styles.label}>2 PLY</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0"
-                placeholderTextColor="#666"
-                keyboardType="number-pad"
-                value={task.springs2ply}
-                onChangeText={(value) => updateTask(machineId, task.id, 'springs2ply', value)}
-              />
-            </View>
-
-            <View style={styles.springInput}>
-              <Text style={styles.label}>3 PLY</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0"
-                placeholderTextColor="#666"
-                keyboardType="number-pad"
-                value={task.springs3ply}
-                onChangeText={(value) => updateTask(machineId, task.id, 'springs3ply', value)}
-              />
-            </View>
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.doneButton}
-            onPress={() => setActiveTask(null)}
-          >
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    return null; // Modal removed for inline interaction
   };
 
   return (
@@ -406,31 +323,104 @@ export default function AddDailyTask() {
                 </View>
                 {MACHINES.map(machine => {
                   const task = machineTasks[machine.id][rowIndex];
+                  const isActive = activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
+
                   return (
-                    <TouchableOpacity 
+                    <View 
                       key={machine.id} 
-                      style={styles.gridCell}
-                      onPress={() => task && setActiveTask({ machineId: machine.id, taskId: task.id })}
+                      style={[
+                        styles.gridCell, 
+                        isActive && styles.activeGridCell,
+                        task?.shadeId ? styles.filledGridCell : null
+                      ]}
                     >
                       {task ? (
                         <>
-                          <Text style={styles.cellShadeText}>
-                            {task.shadeNumber ? `Shade #${task.shadeNumber}` : 'Shade'}
-                          </Text>
-                          <View style={styles.cellPlyRow}>
-                            <View style={styles.plyBadge}>
-                              <Text style={styles.plyBadgeText}>{task.springs2ply || 0}P</Text>
+                          <TouchableOpacity 
+                            style={styles.cellHeader} 
+                            onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id })}
+                          >
+                            <Text style={[styles.cellShadeText, task.shadeNumber ? styles.filledText : null]}>
+                              {task.shadeNumber ? `#${task.shadeNumber}` : 'Shade'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {isActive ? (
+                            <View style={styles.inlineEditor}>
+                              <TextInput
+                                style={styles.inlineShadeInput}
+                                placeholder="Shade..."
+                                placeholderTextColor="#444"
+                                value={task.shadeSearchText}
+                                onChangeText={(value) => {
+                                  updateTask(machine.id, task.id, 'shadeSearchText', value);
+                                  updateTask(machine.id, task.id, 'showShadeDropdown', true);
+                                }}
+                                onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
+                                keyboardType="number-pad"
+                                autoFocus
+                              />
+                              
+                              {task.showShadeDropdown && (
+                                <View style={styles.inlineDropdown}>
+                                  <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                                    {getFilteredShades(task.shadeSearchText).slice(0, 5).map((shade) => (
+                                      <TouchableOpacity
+                                        key={shade.id}
+                                        style={styles.inlineDropdownItem}
+                                        onPress={() => {
+                                          updateTask(machine.id, task.id, 'shadeId', shade.id);
+                                        }}
+                                      >
+                                        <Text style={styles.inlineDropdownText}>#{shade.shade_number}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                </View>
+                              )}
+
+                              <View style={styles.inlinePlyRow}>
+                                <View style={styles.inlinePlyInputWrap}>
+                                  <Text style={styles.inlinePlyLabel}>2P</Text>
+                                  <TextInput
+                                    style={styles.inlinePlyInput}
+                                    value={task.springs2ply}
+                                    onChangeText={(val) => updateTask(machine.id, task.id, 'springs2ply', val)}
+                                    keyboardType="number-pad"
+                                    placeholder="0"
+                                    placeholderTextColor="#444"
+                                  />
+                                </View>
+                                <View style={styles.inlinePlyInputWrap}>
+                                  <Text style={styles.inlinePlyLabel}>3P</Text>
+                                  <TextInput
+                                    style={styles.inlinePlyInput}
+                                    value={task.springs3ply}
+                                    onChangeText={(val) => updateTask(machine.id, task.id, 'springs3ply', val)}
+                                    keyboardType="number-pad"
+                                    placeholder="0"
+                                    placeholderTextColor="#444"
+                                  />
+                                </View>
+                              </View>
                             </View>
-                            <Text style={styles.plyPlusText}>+</Text>
-                            <View style={styles.plyBadge}>
-                              <Text style={styles.plyBadgeText}>{task.springs3ply || 0}P</Text>
-                            </View>
-                          </View>
+                          ) : (
+                            <TouchableOpacity 
+                              style={styles.cellSummary}
+                              onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}
+                            >
+                              <View style={styles.summaryPlyRow}>
+                                <Text style={styles.summaryPlyText}>{task.springs2ply || 0}P</Text>
+                                <Text style={styles.summaryPlyDivider}>+</Text>
+                                <Text style={styles.summaryPlyText}>{task.springs3ply || 0}P</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
                         </>
                       ) : (
                         <Text style={styles.emptyCellText}>-</Text>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>
@@ -442,8 +432,6 @@ export default function AddDailyTask() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-
-        {renderTaskEditModal()}
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -523,10 +511,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   machineInfoCard: {
-    width: 80,
+    width: 90,
     height: 90,
     backgroundColor: '#4CAF50',
-    borderRadius: 8,
+    borderRadius: 12,
     marginHorizontal: 4,
     padding: 8,
     justifyContent: 'center',
@@ -548,55 +536,133 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   gridCell: {
-    width: 80,
-    height: 100,
+    width: 90,
+    minHeight: 110,
     backgroundColor: '#1a1a2e',
-    borderRadius: 8,
+    borderRadius: 12,
     marginHorizontal: 4,
-    padding: 8,
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 6,
     borderWidth: 1,
     borderColor: '#2a2a3e',
+    justifyContent: 'center',
+  },
+  activeGridCell: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#1e1e30',
+    zIndex: 10,
+    elevation: 5,
+  },
+  filledGridCell: {
+    borderColor: '#2e7d32',
+  },
+  cellHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a3e',
+    paddingBottom: 4,
+    marginBottom: 6,
   },
   cellShadeText: {
-    color: '#888',
+    color: '#666',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  filledText: {
+    color: '#4CAF50',
+  },
+  inlineEditor: {
+    marginTop: 2,
+  },
+  inlineShadeInput: {
+    backgroundColor: '#0f0f1e',
+    borderRadius: 6,
+    padding: 6,
+    color: '#fff',
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: '#333',
+    textAlign: 'center',
+  },
+  inlineDropdown: {
+    position: 'absolute',
+    top: 30,
+    left: 0,
+    right: 0,
+    backgroundColor: '#2a2a3e',
+    borderRadius: 6,
+    maxHeight: 120,
+    zIndex: 100,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  inlineDropdownItem: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a4e',
+  },
+  inlineDropdownText: {
+    color: '#fff',
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 4,
   },
-  cellPlyRow: {
+  inlinePlyRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 4,
+  },
+  inlinePlyInputWrap: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
   },
-  plyBadge: {
-    backgroundColor: '#0f0f1e',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  plyBadgeText: {
+  inlinePlyLabel: {
     color: '#555',
-    fontSize: 10,
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  inlinePlyInput: {
+    backgroundColor: '#0f0f1e',
+    borderRadius: 6,
+    width: '100%',
+    padding: 4,
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  cellSummary: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  summaryPlyRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  summaryPlyText: {
+    color: '#888',
+    fontSize: 13,
     fontWeight: 'bold',
   },
-  plyPlusText: {
+  summaryPlyDivider: {
     color: '#333',
-    fontSize: 8,
+    fontSize: 10,
   },
   emptyCellText: {
-    color: '#333',
+    color: '#222',
+    textAlign: 'center',
   },
   gridAddRowButton: {
-    width: 420, // (80+8)*5 minus margin gaps approx
+    width: 470, // Adjusted for 90px cells
     height: 50,
     borderWidth: 1,
     borderColor: '#4CAF50',
     borderStyle: 'dashed',
-    borderRadius: 8,
-    marginTop: 12,
+    borderRadius: 12,
+    marginTop: 16,
     marginHorizontal: 34,
     justifyContent: 'center',
     alignItems: 'center',
@@ -608,10 +674,12 @@ const styles = StyleSheet.create({
   footer: {
     padding: 16,
     backgroundColor: '#0f0f1e',
+    borderTopWidth: 1,
+    borderTopColor: '#2a2a3e',
   },
   saveButton: {
     backgroundColor: '#4CAF50',
-    padding: 18,
+    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
@@ -619,127 +687,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    width: '90%',
-    backgroundColor: '#1a1a2e',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#2a2a3e',
-  },
-  closeModalButton: {
-    alignSelf: 'flex-end',
-    padding: 8,
-  },
-  closeModalButtonText: {
-    color: '#888',
-    fontSize: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#0f0f1e',
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-  },
-  shadeSearchInput: {
-    backgroundColor: '#0f0f1e',
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-  },
-  selectedShade: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#2e7d32',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  selectedShadeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  clearText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    padding: 4,
-  },
-  shadeDropdown: {
-    backgroundColor: '#1a1a2e',
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 200,
-    overflow: 'hidden',
-  },
-  shadeDropdownScroll: {
-    maxHeight: 200,
-  },
-  shadeDropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a3e',
-  },
-  shadeDropdownText: {
-    color: '#fff',
-  },
-  noShadesText: {
-    color: '#888',
-    padding: 12,
-    textAlign: 'center',
-  },
-  springRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 20,
-  },
-  springInput: {
-    flex: 1,
-  },
-  doneButton: {
-    backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  doneButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
   saveButtonDisabled: {
     opacity: 0.5,
