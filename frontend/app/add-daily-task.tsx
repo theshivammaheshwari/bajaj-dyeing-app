@@ -363,19 +363,31 @@ export default function AddDailyTask() {
                               
                               {task.showShadeDropdown && (
                                 <View style={styles.inlineDropdown}>
-                                  <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
-                                    {getFilteredShades(task.shadeSearchText).slice(0, 5).map((shade) => (
-                                      <TouchableOpacity
-                                        key={shade.id}
-                                        style={styles.inlineDropdownItem}
-                                        onPress={() => {
-                                          updateTask(machine.id, task.id, 'shadeId', shade.id);
-                                        }}
-                                      >
-                                        <Text style={styles.inlineDropdownText}>#{shade.shade_number}</Text>
-                                      </TouchableOpacity>
-                                    ))}
-                                  </ScrollView>
+                                  <View style={{ maxHeight: 200, minHeight: 40 }}>
+                                    <ScrollView 
+                                      nestedScrollEnabled={true} 
+                                      keyboardShouldPersistTaps="handled"
+                                      contentContainerStyle={{ flexGrow: 1 }}
+                                    >
+                                      {getFilteredShades(task.shadeSearchText).length > 0 ? (
+                                        getFilteredShades(task.shadeSearchText).map((shade) => (
+                                          <TouchableOpacity
+                                            key={shade.id}
+                                            style={styles.inlineDropdownItem}
+                                            onPress={() => {
+                                              updateTask(machine.id, task.id, 'shadeId', shade.id);
+                                            }}
+                                          >
+                                            <Text style={styles.inlineDropdownText}>#{shade.shade_number}</Text>
+                                          </TouchableOpacity>
+                                        ))
+                                      ) : (
+                                        <View style={styles.inlineDropdownItem}>
+                                          <Text style={[styles.inlineDropdownText, { color: '#666' }]}>No Match</Text>
+                                        </View>
+                                      )}
+                                    </ScrollView>
+                                  </View>
                                 </View>
                               )}
 
@@ -585,24 +597,30 @@ const styles = StyleSheet.create({
   },
   inlineDropdown: {
     position: 'absolute',
-    top: 30,
+    top: 35, // Adjusted to be slightly below the input
     left: 0,
     right: 0,
     backgroundColor: '#2a2a3e',
-    borderRadius: 6,
-    maxHeight: 120,
-    zIndex: 100,
-    borderWidth: 1,
+    borderRadius: 8,
+    maxHeight: 250, // Increased height
+    zIndex: 1000, // Higher zIndex to overlap everything
+    elevation: 10,
+    borderWidth: 2, // Thicker border
     borderColor: '#4CAF50',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
   inlineDropdownItem: {
-    padding: 8,
+    padding: 12, // More padding for touch targets
     borderBottomWidth: 1,
     borderBottomColor: '#3a3a4e',
   },
   inlineDropdownText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 14, // Larger text
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   inlinePlyRow: {

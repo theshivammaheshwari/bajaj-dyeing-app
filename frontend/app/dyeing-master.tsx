@@ -377,10 +377,14 @@ export default function DyeingMaster() {
                 }
 
                 return (
-                  <TouchableOpacity 
+                          <TouchableOpacity 
                     key={machine.id} 
                     style={[styles.gridCell, { backgroundColor: cellBg }]}
-                    onPress={() => task && setActiveTask({ machineId: machine.id, taskIndex: rowIndex })}
+                    onPress={() => {
+                      if (task) {
+                        router.push('/add-daily-task');
+                      }
+                    }}
                   >
                     {task ? (
                       <>
