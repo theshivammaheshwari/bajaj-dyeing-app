@@ -63,7 +63,7 @@ const initialMachineTasks = () => {
 
 export default function AddDailyTask() {
   const router = useRouter();
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -344,10 +344,7 @@ export default function AddDailyTask() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.headerBackground}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
@@ -430,7 +427,7 @@ export default function AddDailyTask() {
                           { backgroundColor: colors.card, borderColor: colors.border },
                           isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
                           task?.shadeId
-                            ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }]
+                            ? [styles.filledGridCell, { backgroundColor: '#e8f5e9' }]
                             : null,
                           hasError && { borderColor: '#ef4444', borderWidth: 2 },
                           { zIndex: isActive ? 100 : 1 },

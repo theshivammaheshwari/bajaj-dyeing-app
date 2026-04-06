@@ -34,7 +34,7 @@ export default function ShadeDetail() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const shadeId = params.shadeId as string;
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
 
   const [shade, setShade] = useState<Shade | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function ShadeDetail() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading shade details...</Text>
         </View>
@@ -82,7 +82,7 @@ export default function ShadeDetail() {
   if (!shade) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
           <Text style={[styles.errorText, { color: colors.danger }]}>Shade not found</Text>
           <TouchableOpacity
@@ -98,7 +98,7 @@ export default function ShadeDetail() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       
       {/* Header - Hidden in Print */}
       <View style={[styles.header, styles.noPrint, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }, Platform.OS === 'web' && { className: 'no-print' } as any]}>

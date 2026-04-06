@@ -39,7 +39,7 @@ export default function Calculator() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const shadeId = params.shadeId as string;
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
 
   const [shade, setShade] = useState<Shade | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<number>(6);
@@ -96,7 +96,7 @@ export default function Calculator() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
         </View>
@@ -107,7 +107,7 @@ export default function Calculator() {
   if (!shade) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
           <Text style={[styles.errorText, { color: colors.danger }]}>Shade not found</Text>
           <TouchableOpacity
@@ -123,7 +123,7 @@ export default function Calculator() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>

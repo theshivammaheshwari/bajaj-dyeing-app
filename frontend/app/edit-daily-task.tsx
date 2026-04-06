@@ -56,7 +56,7 @@ const emptyTask = (machineId: string, index: number): MachineTaskData => ({
 export default function EditDailyTask() {
   const router = useRouter();
   const { taskId } = useLocalSearchParams(); 
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -277,7 +277,7 @@ export default function EditDailyTask() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()}><Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text></TouchableOpacity>
@@ -330,7 +330,7 @@ export default function EditDailyTask() {
                         styles.gridCell, 
                         { backgroundColor: colors.card, borderColor: colors.border },
                         isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }], 
-                        t?.shadeId && [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }],
+                        t?.shadeId && [styles.filledGridCell, { backgroundColor: '#e8f5e9' }],
                         hasError && { borderColor: '#ef4444', borderWidth: 2 },
                         { zIndex: isActive ? 1000 : 1 }
                       ]}>

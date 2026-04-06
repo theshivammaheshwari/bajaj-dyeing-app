@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, SafeAreaView, StatusBar, Alert, Platform,
+  ScrollView, SafeAreaView, StatusBar, Alert, Platform, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -40,7 +40,7 @@ const showConfirm = (title: string, message: string, onConfirm: () => void) => {
 
 export default function DyeingMaster() {
   const router = useRouter();
-  const { theme, colors, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const [dailyTask, setDailyTask] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -246,29 +246,46 @@ export default function DyeingMaster() {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return colors.success;
+      case 'rejected': return colors.danger;
+      case 'in-progress': return colors.secondary;
+      default: return colors.textSecondary;
+    }
+  };
+
+  const getStatusBg = (status: string) => {
+    switch (status) {
+      case 'completed': return '#F0FFF4';
+      case 'rejected': return '#FFF5F5';
+      case 'in-progress': return '#EBF8FF';
+      default: return 'transparent';
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.headerBackground}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
 
-      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
-            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+      <View style={[styles.dateBar, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
           <TextInput
             style={[styles.dateInput, { color: colors.primary }]}
@@ -309,7 +326,7 @@ export default function DyeingMaster() {
                   <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
                     <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
                     <View style={styles.machineStats}>
-                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>
+                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.75)' }]}>
                         {machine.capacity}kg
                       </Text>
                       <Text style={[styles.machineCountText, { color: '#fff' }]}>
@@ -343,17 +360,9 @@ export default function DyeingMaster() {
                         key={machine.id}
                         style={[
                           styles.gridCell,
-                          { backgroundColor: colors.card, borderColor: colors.border },
+                          { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow },
                           isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
-                          task
-                            ? task.status === 'completed'
-                              ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }]
-                              : task.status === 'rejected'
-                              ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }]
-                              : task.status === 'in-progress'
-                              ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }]
-                              : null
-                            : null,
+                          task ? { backgroundColor: getStatusBg(task.status) } : null,
                         ]}
                       >
                         {task ? (
@@ -374,16 +383,7 @@ export default function DyeingMaster() {
                                 <Text
                                   style={[
                                     styles.statusIndicator,
-                                    {
-                                      color:
-                                        task.status === 'completed'
-                                          ? colors.success
-                                          : task.status === 'rejected'
-                                          ? colors.danger
-                                          : task.status === 'in-progress'
-                                          ? colors.secondary
-                                          : colors.textSecondary,
-                                    },
+                                    { color: getStatusColor(task.status) },
                                   ]}
                                 >
                                   {task.status === 'completed'
@@ -502,20 +502,20 @@ export default function DyeingMaster() {
             )}
 
             {payment && (
-              <View style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
                 <Text style={[styles.paymentTitle, { color: colors.text }]}>💰 Payment Summary</Text>
                 <View style={styles.paymentFlex}>
-                  <View style={styles.paymentStat}>
+                  <View style={[styles.paymentStat, { backgroundColor: '#F0FFF4', borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
                     <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment}</Text>
                     <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg} kg</Text>
                   </View>
-                  <View style={styles.paymentStat}>
+                  <View style={[styles.paymentStat, { backgroundColor: '#FFF5F5', borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rejected</Text>
                     <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment}</Text>
                     <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg} kg</Text>
                   </View>
-                  <View style={styles.paymentStat}>
+                  <View style={[styles.paymentStat, { backgroundColor: colors.primaryLight, borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
                     <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment}</Text>
                     <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg} kg</Text>
@@ -539,9 +539,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerLeft: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
   },
   headerTitle: {
     fontSize: 20,
@@ -549,33 +560,31 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-  },
-  themeToggle: {
-    padding: 8,
-    borderRadius: 8,
+    marginTop: 1,
   },
   logoutButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
   logoutText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 13,
   },
   dateBar: {
     padding: 12,
   },
   dateInputContainer: {
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 10,
     paddingHorizontal: 12,
     alignSelf: 'center',
   },
   dateInput: {
     fontSize: 16,
     fontWeight: 'bold',
-    paddingVertical: 6,
+    paddingVertical: 8,
     textAlign: 'center',
   },
   verticalScrollView: {
@@ -646,12 +655,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     position: 'relative',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   activeGridCell: {
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
   },
   cellHeader: {
@@ -659,7 +672,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: 'rgba(0,0,0,0.06)',
     paddingBottom: 6,
     marginBottom: 8,
   },
@@ -691,12 +704,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   smallInput: {
-    borderRadius: 6,
+    borderRadius: 8,
     padding: 8,
     fontSize: 14,
     fontWeight: 'bold',
     textAlign: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -711,8 +724,8 @@ const styles = StyleSheet.create({
   },
   smallActionButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 9,
+    borderRadius: 8,
     alignItems: 'center',
   },
   actionButtonText: {
@@ -754,6 +767,10 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     width: 920,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   paymentTitle: {
     fontSize: 20,
@@ -763,14 +780,16 @@ const styles = StyleSheet.create({
   paymentFlex: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 10,
   },
   paymentStat: {
     flex: 1,
     alignItems: 'center',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 13,
     marginBottom: 4,
+    fontWeight: '500',
   },
   statValue: {
     fontSize: 20,

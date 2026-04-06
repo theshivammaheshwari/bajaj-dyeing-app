@@ -40,7 +40,7 @@ export default function EditShade() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const shadeId = params.shadeId as string;
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
 
   const [shadeNumber, setShadeNumber] = useState('');
   const [originalWeight, setOriginalWeight] = useState('');
@@ -272,7 +272,7 @@ export default function EditShade() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
         </View>
@@ -282,7 +282,7 @@ export default function EditShade() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}

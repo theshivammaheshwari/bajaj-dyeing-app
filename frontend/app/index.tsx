@@ -10,6 +10,7 @@ import {
   StatusBar,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,7 +35,7 @@ interface Shade {
 
 export default function Index() {
   const router = useRouter();
-  const { theme, colors, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const [shades, setShades] = useState<Shade[]>([]);
   const [filteredShades, setFilteredShades] = useState<Shade[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +61,6 @@ export default function Index() {
       setLoading(true);
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/shades`);
       const data = await response.json();
-      // Sort shades numerically by shade_number
       const sortedData = data.sort((a: Shade, b: Shade) => {
         const numA = parseInt(a.shade_number) || 0;
         const numB = parseInt(b.shade_number) || 0;
@@ -159,18 +159,18 @@ export default function Index() {
 
   const renderShadeItem = ({ item }: { item: Shade }) => (
     <TouchableOpacity
-      style={[styles.shadeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[styles.shadeCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}
       onPress={() => router.push(`/calculator?shadeId=${item.id}`)}
     >
       <View style={styles.shadeHeader}>
         <Text style={[styles.shadeNumber, { color: colors.text }]}>Shade #{item.shade_number}</Text>
         <View style={styles.badgeRow}>
           {item.rc === 'Yes' && (
-            <View style={styles.rcBadge}>
+            <View style={[styles.rcBadge, { backgroundColor: '#805AD5' }]}>
               <Text style={styles.rcText}>RC</Text>
             </View>
           )}
-          <View style={styles.programBadge}>
+          <View style={[styles.programBadge, { backgroundColor: colors.primary }]}>
             <Text style={styles.programText}>{item.program_number || 'P1'}</Text>
           </View>
         </View>
@@ -184,13 +184,13 @@ export default function Index() {
           style={[styles.editButton, { backgroundColor: colors.secondary }]}
           onPress={() => router.push(`/edit-shade?shadeId=${item.id}`)}
         >
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={styles.editButtonText}>✎ Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.deleteButton, { backgroundColor: colors.danger }]}
           onPress={() => handleDeletePress(item.id, item.shade_number)}
         >
-          <Text style={styles.deleteButtonText}>Delete</Text>
+          <Text style={styles.deleteButtonText}>🗑 Delete</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -198,33 +198,35 @@ export default function Index() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Bajaj Dyeing Unit</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Thread Dyeing Machine Recipes</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Bajaj Dyeing Unit</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Admin Dashboard</Text>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
-            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: colors.danger }]}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: colors.danger }]}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
         <TextInput
-          style={[styles.searchInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-          placeholder="Search by shade number..."
+          style={[styles.searchInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+          placeholder="🔍 Search by shade number..."
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <View style={[styles.quickActions, { backgroundColor: colors.card }]}>
+      <View style={[styles.quickActions, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.quickActionButton, { backgroundColor: colors.secondary }]}
           onPress={() => router.push('/daily-tasks')}
@@ -234,7 +236,7 @@ export default function Index() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.quickActionButton, { backgroundColor: colors.primary }]}
+          style={[styles.quickActionButton, { backgroundColor: colors.accent }]}
           onPress={() => router.push('/dyeing-master')}
         >
           <Text style={styles.quickActionIcon}>👨‍🏭</Text>
@@ -283,40 +285,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 16,
+    padding: 16,
+    paddingTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 14,
-  },
-  themeToggle: {
-    padding: 8,
-    borderRadius: 12,
+    fontSize: 12,
+    marginTop: 1,
   },
   logoutButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
   logoutText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   searchContainer: {
     padding: 16,
+    paddingBottom: 12,
   },
   quickActions: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     flexDirection: 'row',
     gap: 12,
   },
@@ -325,71 +339,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 12,
     borderRadius: 12,
     gap: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   quickActionIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   quickActionText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   searchInput: {
     borderRadius: 12,
     padding: 14,
-    fontSize: 16,
-    borderWidth: 1,
+    fontSize: 15,
+    borderWidth: 1.5,
   },
   listContainer: {
     padding: 16,
     paddingBottom: 100,
   },
   shadeCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   shadeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   shadeNumber: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     flex: 1,
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   rcBadge: {
-    backgroundColor: '#8E24AA',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   rcText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11,
   },
   programBadge: {
-    backgroundColor: '#FB8C00',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   programText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 12,
   },
   listWrapper: {
     flex: 1,
@@ -404,37 +424,37 @@ const styles = StyleSheet.create({
   },
   shadeWeight: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   dyesLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 4,
   },
   editButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   editButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   deleteButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   deleteButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   addButton: {
     position: 'absolute',
@@ -442,17 +462,18 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 8,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
+    letterSpacing: 0.3,
   },
   centerContent: {
     flex: 1,

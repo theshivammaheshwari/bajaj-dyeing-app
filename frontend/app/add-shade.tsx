@@ -26,7 +26,7 @@ interface DyeInput {
 
 export default function AddShade() {
   const router = useRouter();
-  const { theme, colors } = useTheme();
+  const { colors } = useTheme();
   const [shadeNumber, setShadeNumber] = useState('');
   const [originalWeight, setOriginalWeight] = useState('');
   const [programNumber, setProgramNumber] = useState('P1');
@@ -185,7 +185,7 @@ export default function AddShade() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}

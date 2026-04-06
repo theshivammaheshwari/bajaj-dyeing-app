@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext } from 'react';
 
-export type ThemeType = 'dark' | 'light';
+export type ThemeType = 'light';
 
 export interface ThemeColors {
   background: string;
@@ -10,9 +9,12 @@ export interface ThemeColors {
   textSecondary: string;
   border: string;
   primary: string;
+  primaryLight: string;
   secondary: string;
   danger: string;
+  dangerLight: string;
   success: string;
+  successLight: string;
   inputBackground: string;
   divider: string;
   headerBackground: string;
@@ -20,44 +22,30 @@ export interface ThemeColors {
   shadow: string;
   badgeBackground: string;
   badgeText: string;
+  accent: string;
 }
 
-const darkTheme: ThemeColors = {
-  background: '#0f0f1e',
-  card: '#1a1a2e',
-  text: '#ffffff',
-  textSecondary: '#a0a0b0',
-  border: '#2a2a4a',
-  primary: '#4CAF50',
-  secondary: '#2196F3',
-  danger: '#FF5252',
-  success: '#4CAF50',
-  inputBackground: '#252545',
-  divider: '#2a2a4a',
-  headerBackground: '#16162a',
-  tabBarBackground: '#1a1a2e',
-  shadow: '#000000',
-  badgeBackground: '#33334d',
-  badgeText: '#ffffff',
-};
-
-const lightTheme: ThemeColors = {
-  background: '#f5f5f7',
-  card: '#ffffff',
-  text: '#1a1a2e',
-  textSecondary: '#666666',
-  border: '#e0e0e0',
-  primary: '#2e7d32', // Slightly darker green for light mode contrast
-  secondary: '#1565c0', // Slightly darker blue
-  danger: '#d32f2f',
-  success: '#2e7d32',
-  inputBackground: '#f0f0f0',
-  divider: '#e0e0e0',
-  headerBackground: '#ffffff',
-  tabBarBackground: '#ffffff',
-  shadow: '#000000',
-  badgeBackground: '#eeeeee',
-  badgeText: '#333333',
+const lightBlueTheme: ThemeColors = {
+  background: '#EDF4FC',       // Very light blue background
+  card: '#FFFFFF',             // Pure white cards
+  text: '#1B2A4A',            // Dark navy text
+  textSecondary: '#5A6B8A',   // Muted blue-gray secondary text
+  border: '#C8D9EF',          // Soft blue border
+  primary: '#2B6CB0',         // Deep blue primary
+  primaryLight: '#E6F0FA',    // Very light blue tint
+  secondary: '#3182CE',       // Medium blue secondary
+  danger: '#C53030',          // Elegant muted red
+  dangerLight: '#FFF5F5',     // Soft red background
+  success: '#276749',         // Deep green success
+  successLight: '#F0FFF4',    // Soft green background
+  inputBackground: '#F7FAFF', // Near-white blue input bg
+  divider: '#D6E4F0',         // Light blue divider
+  headerBackground: '#FFFFFF', // White header
+  tabBarBackground: '#FFFFFF', // White tab bar
+  shadow: '#2B6CB0',          // Blue shadow
+  badgeBackground: '#E6F0FA', // Light blue badge
+  badgeText: '#2B6CB0',       // Deep blue badge text
+  accent: '#1A4B8C',          // Deep accent blue for emphasis
 };
 
 interface ThemeContextType {
@@ -69,25 +57,11 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<ThemeType>( darkTheme as any === 'dark' ? 'dark' : 'dark'); // Default to dark as per requirement
+  const theme: ThemeType = 'light';
+  const colors = lightBlueTheme;
 
-  useEffect(() => {
-    const loadTheme = async () => {
-      const savedTheme = await AsyncStorage.getItem('userTheme');
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        setTheme(savedTheme as ThemeType);
-      }
-    };
-    loadTheme();
-  }, []);
-
-  const toggleTheme = async () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    await AsyncStorage.setItem('userTheme', newTheme);
-  };
-
-  const colors = theme === 'dark' ? darkTheme : lightTheme;
+  // toggleTheme is a no-op now (kept for API compatibility)
+  const toggleTheme = () => {};
 
   return (
     <ThemeContext.Provider value={{ theme, colors, toggleTheme }}>

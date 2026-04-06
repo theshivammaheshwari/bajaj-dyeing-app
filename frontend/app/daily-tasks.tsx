@@ -16,6 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
 
+
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
 interface MachineTask {
@@ -38,7 +39,7 @@ interface DailyTask {
 
 export default function DailyTasks() {
   const router = useRouter();
-  const { theme, colors } = useTheme();
+  const { colors } = useTheme();
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -241,7 +242,7 @@ export default function DailyTasks() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.card} />
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
