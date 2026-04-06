@@ -41,21 +41,32 @@ interface MachineTaskData {
   shadeSearchText: string;
 }
 
+const emptyTask = (machineId: string, index: number): MachineTaskData => ({
+  id: `${machineId}-${index}`,
+  shadeId: '',
+  shadeNumber: '',
+  springs2ply: '',
+  springs3ply: '',
+  showShadeDropdown: false,
+  shadeSearchText: '',
+});
+
+const initialMachineTasks = () => {
+  const tasks: { [key: string]: MachineTaskData[] } = {};
+  MACHINES.forEach(m => {
+    tasks[m.id] = Array.from({ length: 5 }, (_, i) => emptyTask(m.id, i));
+  });
+  return tasks;
+};
+
 export default function AddDailyTask() {
   const router = useRouter();
   const { colors, theme } = useTheme();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // Each machine has an array of tasks
-  const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>({
-    m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-    m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-  });
+  const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>(initialMachineTasks());
+  const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
 
   useEffect(() => {
     fetchShades();
@@ -67,7 +78,7 @@ export default function AddDailyTask() {
       console.log('Fetching tasks for date:', date);
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
       const data = await response.json();
-      
+
       if (data.id) {
         console.log('Found existing task:', data.id);
         const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
@@ -80,27 +91,16 @@ export default function AddDailyTask() {
             springs2ply: t.springs_2ply !== undefined ? String(t.springs_2ply) : '0',
             springs3ply: t.springs_3ply !== undefined ? String(t.springs_3ply) : '0',
             showShadeDropdown: false,
-            shadeSearchText: t.shade_number ? String(t.shade_number) : ''
+            shadeSearchText: t.shade_number ? String(t.shade_number) : '',
           }));
-          // Pad to 5 rows
           while (newMachineTasks[m.id].length < 5) {
-            newMachineTasks[m.id].push({
-              id: `${m.id}-${newMachineTasks[m.id].length}`,
-              shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: ''
-            });
+            newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
           }
         });
         setMachineTasks(newMachineTasks);
       } else {
         console.log('No tasks found for this date, resetting grid');
-        // Reset to empty state for new date
-        setMachineTasks({
-          m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-          m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-          m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-          m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-          m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-        });
+        setMachineTasks(initialMachineTasks());
       }
     } catch (error) {
       console.error('Error fetching existing task:', error);
@@ -111,7 +111,6 @@ export default function AddDailyTask() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/shades`);
       const data = await response.json();
-      // Sort shades numerically by shade_number
       const sortedShades = data.sort((a: Shade, b: Shade) => {
         const numA = parseInt(a.shade_number) || 0;
         const numB = parseInt(b.shade_number) || 0;
@@ -123,108 +122,75 @@ export default function AddDailyTask() {
     }
   };
 
-  const addTaskToMachine = (machineId: string) => {
-    const newTask: MachineTaskData = {
-      id: Date.now().toString(),
-      shadeId: '',
-      shadeNumber: '',
-      springs2ply: '',
-      springs3ply: '',
-      showShadeDropdown: false,
-      shadeSearchText: '',
-    };
-    setMachineTasks({
-      ...machineTasks,
-      [machineId]: [...machineTasks[machineId], newTask],
-    });
-  };
-
-  const removeTaskFromMachine = (machineId: string, taskId: string) => {
-    if (machineTasks[machineId].length > 1) {
-      setMachineTasks({
-        ...machineTasks,
-        [machineId]: machineTasks[machineId].filter((task) => task.id !== taskId),
-      });
-    }
-  };
-
   const updateTask = (machineId: string, taskId: string, field: string, value: string | boolean) => {
     const machine = MACHINES.find(m => m.id === machineId);
     const max = machine?.totalSprings || 0;
 
     if (field === 'shadeId') {
-      const selectedShade = shades.find((s) => s.id === value);
-      setMachineTasks({
-        ...machineTasks,
-        [machineId]: machineTasks[machineId].map((task) =>
+      const selectedShade = shades.find(s => s.id === value);
+      setMachineTasks(prev => ({
+        ...prev,
+        [machineId]: prev[machineId].map(task =>
           task.id === taskId
-            ? { 
-                ...task, 
-                shadeId: value as string, 
+            ? {
+                ...task,
+                shadeId: value as string,
                 shadeNumber: selectedShade?.shade_number || '',
                 shadeSearchText: selectedShade?.shade_number || '',
-                showShadeDropdown: false 
+                showShadeDropdown: false,
               }
             : task
         ),
-      });
+      }));
     } else if (field === 'springs2ply' || field === 'springs3ply') {
       const numVal = parseInt(value as string) || 0;
-      if (numVal < 0) return;
-      if (numVal > max) return;
-
+      if (numVal < 0 || numVal > max) return;
       const otherField = field === 'springs2ply' ? 'springs3ply' : 'springs2ply';
       const otherVal = Math.max(0, max - numVal).toString();
-
-      setMachineTasks({
-        ...machineTasks,
-        [machineId]: machineTasks[machineId].map((task) =>
-          task.id === taskId ? { 
-            ...task, 
-            [field]: value,
-            [otherField]: otherVal 
-          } : task
+      setMachineTasks(prev => ({
+        ...prev,
+        [machineId]: prev[machineId].map(task =>
+          task.id === taskId
+            ? { ...task, [field]: value, [otherField]: otherVal }
+            : task
         ),
-      });
+      }));
     } else {
-      setMachineTasks({
-        ...machineTasks,
-        [machineId]: machineTasks[machineId].map((task) =>
+      setMachineTasks(prev => ({
+        ...prev,
+        [machineId]: prev[machineId].map(task =>
           task.id === taskId ? { ...task, [field]: value } : task
         ),
-      });
+      }));
     }
   };
 
   const getFilteredShades = (searchText: string) => {
     if (!searchText.trim()) return shades;
-    return shades.filter(shade => 
+    return shades.filter(shade =>
       shade.shade_number.toLowerCase().includes(searchText.toLowerCase())
     );
   };
 
-  const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
-
-  const maxRows = Math.max(...Object.values(machineTasks).map(tasks => tasks.length));
-
   const addRow = () => {
-    const updatedTasks = { ...machineTasks };
-    MACHINES.forEach(machine => {
-      const newTask: MachineTaskData = {
-        id: Date.now().toString() + Math.random(),
-        shadeId: '',
-        shadeNumber: '',
-        springs2ply: '',
-        springs3ply: '',
-        showShadeDropdown: false,
-        shadeSearchText: '',
-      };
-      updatedTasks[machine.id] = [...updatedTasks[machine.id], newTask];
+    setMachineTasks(prev => {
+      const updated = { ...prev };
+      MACHINES.forEach(machine => {
+        const newTask: MachineTaskData = {
+          id: Date.now().toString() + Math.random(),
+          shadeId: '',
+          shadeNumber: '',
+          springs2ply: '',
+          springs3ply: '',
+          showShadeDropdown: false,
+          shadeSearchText: '',
+        };
+        updated[machine.id] = [...updated[machine.id], newTask];
+      });
+      return updated;
     });
-    setMachineTasks(updatedTasks);
   };
 
-  // Helper function for showing alerts (web compatible)
   const showAlert = (title: string, message: string, onOk?: () => void) => {
     if (Platform.OS === 'web') {
       alert(`${title}: ${message}`);
@@ -251,7 +217,6 @@ export default function AddDailyTask() {
         if (task.shadeId && (task.springs2ply || task.springs3ply)) {
           const ply2 = parseInt(task.springs2ply) || 0;
           const ply3 = parseInt(task.springs3ply) || 0;
-
           validTasks.push({
             shade_id: task.shadeId,
             shade_number: task.shadeNumber,
@@ -262,7 +227,6 @@ export default function AddDailyTask() {
         }
       }
 
-      // Check total springs don't exceed machine capacity
       const totalSprings = validTasks.reduce((sum, t) => sum + t.springs_2ply + t.springs_3ply, 0);
       if (totalSprings > machine.totalSprings) {
         showAlert('Error', `${machine.name}: Total springs (${totalSprings}) exceeds capacity (${machine.totalSprings})`);
@@ -284,9 +248,7 @@ export default function AddDailyTask() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -304,44 +266,38 @@ export default function AddDailyTask() {
     }
   };
 
-  const renderMachineForm = (machine: typeof MACHINES[0]) => {
-    return null; // Logic is now handled by the grid layout
-  };
-
-  const renderTaskEditModal = () => {
-    return null; // Modal removed for inline interaction
-  };
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar
+        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.headerBackground}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView 
-          style={styles.verticalScrollView} 
+        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
+          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.dateInput, { color: colors.primary }]}
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+        </View>
+
+        <ScrollView
+          style={styles.verticalScrollView}
           contentContainerStyle={styles.verticalScrollContent}
           showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
-
-            <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-              <TextInput
-                style={[styles.dateInput, { color: colors.primary }]}
-                value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-          </View>
-
           <ScrollView
             style={styles.horizontalScrollView}
             contentContainerStyle={styles.horizontalScrollContent}
@@ -350,22 +306,27 @@ export default function AddDailyTask() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.gridContainer}>
-              {/* Top Row: Machine Cards */}
+              {/* Machine Header Row */}
               <View style={styles.gridRow}>
                 <View style={styles.rowNumberCell}>
                   <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
                 </View>
                 {MACHINES.map(machine => {
                   const tasks = machineTasks[machine.id];
-                  const totalSpringsUsed = tasks.reduce((sum, task) => 
-                    sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0), 0
+                  const totalSpringsUsed = tasks.reduce(
+                    (sum, task) => sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0),
+                    0
                   );
                   return (
                     <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
                       <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
                       <View style={styles.machineStats}>
-                        <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
-                        <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                        <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>
+                          {machine.capacity}kg
+                        </Text>
+                        <Text style={[styles.machineCountText, { color: '#fff' }]}>
+                          {totalSpringsUsed}/{machine.totalSprings}
+                        </Text>
                       </View>
                     </View>
                   );
@@ -380,23 +341,26 @@ export default function AddDailyTask() {
                   </View>
                   {MACHINES.map(machine => {
                     const task = machineTasks[machine.id][rowIndex];
-                    const isActive = activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
+                    const isActive =
+                      activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
 
                     return (
-                      <View 
-                        key={machine.id} 
+                      <View
+                        key={machine.id}
                         style={[
-                          styles.gridCell, 
+                          styles.gridCell,
                           { backgroundColor: colors.card, borderColor: colors.border },
                           isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
-                          task?.shadeId ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] : null,
-                          { zIndex: isActive ? 100 : 1 }
+                          task?.shadeId
+                            ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }]
+                            : null,
+                          { zIndex: isActive ? 100 : 1 },
                         ]}
                       >
                         {task ? (
                           <>
-                            <TouchableOpacity 
-                              style={styles.cellHeader} 
+                            <TouchableOpacity
+                              style={styles.cellHeader}
                               onPress={() => {
                                 if (task.shadeId && !isActive) {
                                   router.push(`/shade-detail?shadeId=${task.shadeId}`);
@@ -405,150 +369,173 @@ export default function AddDailyTask() {
                                 }
                               }}
                             >
-                            <Text 
-                              numberOfLines={1}
-                              style={[
-                                styles.cellShadeText, 
-                                { color: colors.textSecondary }, 
-                                task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null
-                              ]}
-                            >
-                              {task.shadeNumber ? `#${task.shadeNumber}` : 'Select Shade'}
-                            </Text>
-                            {!isActive && (
-                              <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✎</Text>
-                            )}
-                          </TouchableOpacity>
-
-                          {isActive ? (
-                            <View style={[styles.inlineEditor, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-                              <View style={styles.inlineHeaderActions}>
-                                <TextInput
-                                  style={[styles.inlineShadeInput, { color: colors.text, borderBottomColor: colors.border }]}
-                                  placeholder="Shade #"
-                                  placeholderTextColor={colors.textSecondary}
-                                  value={task.shadeSearchText}
-                                  onChangeText={(value) => {
-                                    updateTask(machine.id, task.id, 'shadeSearchText', value);
-                                    updateTask(machine.id, task.id, 'showShadeDropdown', true);
-                                  }}
-                                  onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
-                                  keyboardType="number-pad"
-                                  autoFocus
-                                />
-                                <TouchableOpacity 
-                                  onPress={() => setActiveTask(null)}
-                                  style={styles.closeEditorBtn}
-                                >
-                                  <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕</Text>
-                                </TouchableOpacity>
-                              </View>
-                              
-                              {task.showShadeDropdown && (
-                                <View style={[styles.inlineDropdown, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-                                  <ScrollView 
-                                    nestedScrollEnabled={true} 
-                                    keyboardShouldPersistTaps="handled"
-                                    style={{ maxHeight: 150 }}
-                                  >
-                                    {getFilteredShades(task.shadeSearchText).length > 0 ? (
-                                      getFilteredShades(task.shadeSearchText).map((shade) => (
-                                        <TouchableOpacity
-                                          key={shade.id}
-                                          style={[styles.inlineDropdownItem, { borderBottomColor: colors.border }]}
-                                          onPress={() => {
-                                            updateTask(machine.id, task.id, 'shadeId', shade.id);
-                                          }}
-                                        >
-                                          <Text style={[styles.inlineDropdownText, { color: colors.text }]}>#{shade.shade_number}</Text>
-                                        </TouchableOpacity>
-                                      ))
-                                    ) : (
-                                      <View style={styles.inlineDropdownItem}>
-                                        <Text style={[styles.inlineDropdownText, { color: colors.textSecondary }]}>No Match</Text>
-                                      </View>
-                                    )}
-                                  </ScrollView>
-                                </View>
-                              )}
-
-                              <View style={styles.inlinePlyRow}>
-                                <View style={styles.inlinePlyInputWrap}>
-                                  <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>2P</Text>
-                                  <TextInput
-                                    style={[styles.inlinePlyInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
-                                    value={task.springs2ply}
-                                    onChangeText={(val) => updateTask(machine.id, task.id, 'springs2ply', val)}
-                                    keyboardType="number-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={colors.textSecondary}
-                                  />
-                                </View>
-                                <View style={styles.inlinePlyInputWrap}>
-                                  <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>3P</Text>
-                                  <TextInput
-                                    style={[styles.inlinePlyInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
-                                    value={task.springs3ply}
-                                    onChangeText={(val) => updateTask(machine.id, task.id, 'springs3ply', val)}
-                                    keyboardType="number-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={colors.textSecondary}
-                                  />
-                                </View>
-                              </View>
-                            </View>
-                          ) : (
-                            <TouchableOpacity 
-                              style={styles.cellSummary}
-                              onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}
-                            >
-                              <View style={styles.summaryPlyRow}>
-                                <View style={styles.summaryPlyItem}>
-                                  <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>2P:</Text>
-                                  <Text style={[styles.summaryPlyValue, { color: colors.text }]}>{task.springs2ply || 0}</Text>
-                                </View>
-                                <View style={styles.summaryPlyItem}>
-                                  <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>3P:</Text>
-                                  <Text style={[styles.summaryPlyValue, { color: colors.text }]}>{task.springs3ply || 0}</Text>
-                                </View>
-                              </View>
-                              <Text style={[styles.summaryTotalText, { color: colors.primary }]}>
-                                Total: {(parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0)}
+                              <Text
+                                numberOfLines={1}
+                                style={[
+                                  styles.cellShadeText,
+                                  { color: colors.textSecondary },
+                                  task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null,
+                                ]}
+                              >
+                                {task.shadeNumber ? `#${task.shadeNumber}` : 'Select Shade'}
                               </Text>
+                              {!isActive && (
+                                <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✎</Text>
+                              )}
                             </TouchableOpacity>
-                          )}
-                        </>
-                      ) : (
-                        <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
 
-            <TouchableOpacity 
-              style={[styles.gridAddRowButton, { borderColor: colors.primary }]} 
-              onPress={addRow}
-            >
-              <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add New Row</Text>
-            </TouchableOpacity>
-          </View>
+                            {isActive ? (
+                              <View style={[styles.inlineEditor, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+                                <View style={styles.inlineHeaderActions}>
+                                  <TextInput
+                                    style={[styles.inlineShadeInput, { color: colors.text, borderBottomColor: colors.border }]}
+                                    placeholder="Shade #"
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={task.shadeSearchText}
+                                    onChangeText={value => {
+                                      updateTask(machine.id, task.id, 'shadeSearchText', value);
+                                      updateTask(machine.id, task.id, 'showShadeDropdown', true);
+                                    }}
+                                    onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
+                                    keyboardType="number-pad"
+                                    autoFocus
+                                  />
+                                  <TouchableOpacity
+                                    onPress={() => setActiveTask(null)}
+                                    style={styles.closeEditorBtn}
+                                  >
+                                    <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕</Text>
+                                  </TouchableOpacity>
+                                </View>
+
+                                {task.showShadeDropdown && (
+                                  <View
+                                    style={[
+                                      styles.inlineDropdown,
+                                      { backgroundColor: colors.card, borderColor: colors.primary },
+                                    ]}
+                                  >
+                                    <ScrollView
+                                      nestedScrollEnabled={true}
+                                      keyboardShouldPersistTaps="handled"
+                                      style={{ maxHeight: 150 }}
+                                    >
+                                      {getFilteredShades(task.shadeSearchText).length > 0 ? (
+                                        getFilteredShades(task.shadeSearchText).map(shade => (
+                                          <TouchableOpacity
+                                            key={shade.id}
+                                            style={[styles.inlineDropdownItem, { borderBottomColor: colors.border }]}
+                                            onPress={() => updateTask(machine.id, task.id, 'shadeId', shade.id)}
+                                          >
+                                            <Text style={[styles.inlineDropdownText, { color: colors.text }]}>
+                                              #{shade.shade_number}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        ))
+                                      ) : (
+                                        <View style={styles.inlineDropdownItem}>
+                                          <Text style={[styles.inlineDropdownText, { color: colors.textSecondary }]}>
+                                            No Match
+                                          </Text>
+                                        </View>
+                                      )}
+                                    </ScrollView>
+                                  </View>
+                                )}
+
+                                <View style={styles.inlinePlyRow}>
+                                  <View style={styles.inlinePlyInputWrap}>
+                                    <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>2P</Text>
+                                    <TextInput
+                                      style={[
+                                        styles.inlinePlyInput,
+                                        { color: colors.text, backgroundColor: colors.inputBackground },
+                                      ]}
+                                      value={task.springs2ply}
+                                      onChangeText={val => updateTask(machine.id, task.id, 'springs2ply', val)}
+                                      keyboardType="number-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={colors.textSecondary}
+                                    />
+                                  </View>
+                                  <View style={styles.inlinePlyInputWrap}>
+                                    <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>3P</Text>
+                                    <TextInput
+                                      style={[
+                                        styles.inlinePlyInput,
+                                        { color: colors.text, backgroundColor: colors.inputBackground },
+                                      ]}
+                                      value={task.springs3ply}
+                                      onChangeText={val => updateTask(machine.id, task.id, 'springs3ply', val)}
+                                      keyboardType="number-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={colors.textSecondary}
+                                    />
+                                  </View>
+                                </View>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.cellSummary}
+                                onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}
+                              >
+                                <View style={styles.summaryPlyRow}>
+                                  <View style={styles.summaryPlyItem}>
+                                    <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>2P:</Text>
+                                    <Text style={[styles.summaryPlyValue, { color: colors.text }]}>
+                                      {task.springs2ply || 0}
+                                    </Text>
+                                  </View>
+                                  <View style={styles.summaryPlyItem}>
+                                    <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>3P:</Text>
+                                    <Text style={[styles.summaryPlyValue, { color: colors.text }]}>
+                                      {task.springs3ply || 0}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <Text style={[styles.summaryTotalText, { color: colors.primary }]}>
+                                  Total: {(parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0)}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        ) : (
+                          <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={[styles.gridAddRowButton, { borderColor: colors.primary }]}
+                onPress={addRow}
+              >
+                <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add New Row</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.headerBackground, borderTopColor: colors.border }]}>
-          <TouchableOpacity 
-            style={[styles.saveButton, { backgroundColor: colors.primary }, loading && { opacity: 0.7 }]} 
+        <View
+          style={[
+            styles.footer,
+            { backgroundColor: colors.headerBackground, borderTopColor: colors.border },
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: colors.primary }, loading && { opacity: 0.7 }]}
             onPress={validateAndSave}
             disabled={loading}
           >
             <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save All Tasks'}</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </SafeAreaView>
-);
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -663,9 +650,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  filledGridCell: {
-    // Subtle background for filled cells
-  },
+  filledGridCell: {},
   cellHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
