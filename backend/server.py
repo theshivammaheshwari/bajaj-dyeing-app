@@ -309,13 +309,24 @@ def daily_task_helper(task) -> dict:
 
 @api_router.post("/daily-tasks", response_model=DailyTask)
 async def create_daily_task(task: DailyTaskCreate):
-    """Create a new daily task"""
+    """Create or update a daily task by date"""
     task_dict = task.dict()
     task_dict["created_at"] = datetime.utcnow()
     
+    # Check if a task for this date already exists
+    existing_task = await db.daily_tasks.find_one({"date": task.date})
+    if existing_task:
+        # Update existing task
+        await db.daily_tasks.update_one(
+            {"date": task.date},
+            {"$set": task_dict}
+        )
+        updated_task = await db.daily_tasks.find_one({"date": task.date})
+        return daily_task_helper(updated_task)
+    
+    # Create new task
     result = await db.daily_tasks.insert_one(task_dict)
     created_task = await db.daily_tasks.find_one({"_id": result.inserted_id})
-    
     return daily_task_helper(created_task)
 
 

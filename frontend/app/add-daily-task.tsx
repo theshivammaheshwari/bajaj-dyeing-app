@@ -48,16 +48,59 @@ export default function AddDailyTask() {
   
   // Each machine has an array of tasks
   const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>({
-    m1: [{ id: '1', shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }],
-    m2: [{ id: '1', shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }],
-    m3: [{ id: '1', shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }],
-    m4: [{ id: '1', shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }],
-    m5: [{ id: '1', shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' }],
+    m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+    m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
   });
 
   useEffect(() => {
     fetchShades();
-  }, []);
+    fetchExistingTask();
+  }, [date]);
+
+  const fetchExistingTask = async () => {
+    try {
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
+      const data = await response.json();
+      
+      if (data.id) {
+        const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
+        MACHINES.forEach(m => {
+          const apiTasks = data[m.id] || [];
+          newMachineTasks[m.id] = apiTasks.map((t: any, idx: number) => ({
+            id: `${m.id}-${idx}`,
+            shadeId: t.shade_id || '',
+            shadeNumber: t.shade_number ? String(t.shade_number) : '',
+            springs2ply: t.springs_2ply !== undefined ? String(t.springs_2ply) : '0',
+            springs3ply: t.springs_3ply !== undefined ? String(t.springs_3ply) : '0',
+            showShadeDropdown: false,
+            shadeSearchText: t.shade_number ? String(t.shade_number) : ''
+          }));
+          // Pad to 5 rows
+          while (newMachineTasks[m.id].length < 5) {
+            newMachineTasks[m.id].push({
+              id: `${m.id}-${newMachineTasks[m.id].length}`,
+              shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: ''
+            });
+          }
+        });
+        setMachineTasks(newMachineTasks);
+      } else {
+        // Reset to empty state for new date
+        setMachineTasks({
+          m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+          m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
+          m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
+          m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
+          m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching existing task:', error);
+    }
+  };
 
   const fetchShades = async () => {
     try {

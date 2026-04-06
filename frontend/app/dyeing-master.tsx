@@ -43,7 +43,7 @@ export default function DyeingMaster() {
   const [dailyTask, setDailyTask] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [date] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{[key: string]: {ply2: string, ply3: string}}>({});
 
   const handleLogout = async () => {
@@ -76,8 +76,12 @@ export default function DyeingMaster() {
   };
 
   useEffect(() => { 
-    checkAndRollover();
-  }, []);
+    if (date === new Date().toISOString().split('T')[0]) {
+      checkAndRollover();
+    } else {
+      fetchTodayTask();
+    }
+  }, [date]);
 
   const checkAndRollover = async () => {
     try {
@@ -399,10 +403,21 @@ export default function DyeingMaster() {
         </TouchableOpacity>
       </View>
       <View style={styles.dateBar}>
-        <Text style={styles.dateText}>📅 {date}</Text>
+        <TextInput
+          style={styles.dateInput}
+          value={date}
+          onChangeText={setDate}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor="#666"
+        />
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
-        {MACHINES.map((machine) => renderMachineTasks(machine))}
+        {!dailyTask && !loading && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No tasks found for {date}</Text>
+          </View>
+        )}
+        {dailyTask && MACHINES.map((machine) => renderMachineTasks(machine))}
         {payment && (
           <View style={styles.paymentCard}>
             <Text style={styles.paymentTitle}>💰 Payment Calculation</Text>
@@ -479,8 +494,20 @@ const styles = StyleSheet.create({
   logoutButton: { backgroundColor: '#f44336', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: '#fff', fontWeight: 'bold' },
   dateBar: { backgroundColor: '#1a1a2e', paddingHorizontal: 16, paddingVertical: 8 },
-  dateText: { fontSize: 14, color: '#aaa' },
+  dateInput: { 
+    color: '#4CAF50', 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    backgroundColor: '#0f0f1e', 
+    borderRadius: 8, 
+    paddingHorizontal: 12, 
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#333'
+  },
   scroll: { padding: 16 },
+  emptyContainer: { padding: 40, alignItems: 'center' },
+  emptyText: { color: '#666', fontSize: 16, fontWeight: '600' },
   machineCard: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
   machineName: { fontSize: 18, fontWeight: 'bold', color: '#4CAF50', marginBottom: 12 },
   noTasks: { color: '#666', fontSize: 14 },
