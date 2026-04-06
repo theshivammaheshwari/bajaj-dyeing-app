@@ -125,6 +125,7 @@ export default function Index() {
   const handleLogout = () => {
     const performLogout = async () => {
       await AsyncStorage.removeItem('isAuthenticated');
+      await AsyncStorage.removeItem('userRole');
       if (Platform.OS === 'web') {
         window.location.href = '/login';
       } else {

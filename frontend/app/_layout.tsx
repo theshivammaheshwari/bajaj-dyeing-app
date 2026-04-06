@@ -5,6 +5,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -20,11 +21,14 @@ export default function RootLayout() {
   const checkAuth = async () => {
     try {
       const auth = await AsyncStorage.getItem('isAuthenticated');
-      console.log('Auth status:', auth);
+      const role = await AsyncStorage.getItem('userRole');
+      console.log('Auth status:', auth, 'Role:', role);
       setIsAuthenticated(auth === 'true');
+      setUserRole(role);
     } catch (error) {
       console.error('Error checking auth:', error);
       setIsAuthenticated(false);
+      setUserRole(null);
     }
   };
 
@@ -33,18 +37,32 @@ export default function RootLayout() {
 
     const inLoginScreen = pathname === '/login';
 
-    console.log('Auth:', isAuthenticated, 'Path:', pathname);
+    console.log('Auth:', isAuthenticated, 'Role:', userRole, 'Path:', pathname);
 
     if (!isAuthenticated && !inLoginScreen) {
       // Not authenticated, redirect to login
       console.log('Redirecting to login');
       router.replace('/login');
-    } else if (isAuthenticated && inLoginScreen) {
-      // Authenticated but on login screen, redirect to home
-      console.log('Redirecting to home');
-      router.replace('/');
+    } else if (isAuthenticated) {
+      if (inLoginScreen) {
+        // Authenticated but on login screen, redirect based on role
+        console.log('Already logged in, redirecting');
+        router.replace(userRole === 'admin' ? '/' : '/dyeing-master');
+      } else {
+        // Role-based access control
+        const isAdminRoute = ['/', '/daily-tasks', '/add-daily-task', '/edit-daily-task', '/add-shade', '/edit-shade'].includes(pathname);
+        const isUserRoute = ['/dyeing-master', '/calculator'].includes(pathname);
+
+        if (userRole === 'user' && isAdminRoute) {
+          console.log('User attempting to access Admin route, redirecting to dyeing-master');
+          router.replace('/dyeing-master');
+        } else if (userRole === 'admin' && pathname === '/dyeing-master') {
+          // Admin can see dyeing-master if they want, but home is /
+          // router.replace('/'); // Usually admin should be allowed anywhere
+        }
+      }
     }
-  }, [isAuthenticated, pathname]);
+  }, [isAuthenticated, userRole, pathname]);
 
   if (isAuthenticated === null) {
     return (

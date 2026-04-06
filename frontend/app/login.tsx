@@ -14,7 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CORRECT_PASSWORD = '3112';
+const ADMIN_PASSWORD = '3112';
+const USER_PASSWORD = '3020';
 
 export default function Login() {
   const router = useRouter();
@@ -29,15 +30,26 @@ export default function Login() {
 
     setLoading(true);
 
-    if (password === CORRECT_PASSWORD) {
+    let role = '';
+    if (password === ADMIN_PASSWORD) {
+      role = 'admin';
+    } else if (password === USER_PASSWORD) {
+      role = 'user';
+    }
+
+    if (role) {
       try {
         await AsyncStorage.setItem('isAuthenticated', 'true');
-        // Force reload for web to apply auth state
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        } else {
-          router.replace('/');
-        }
+        await AsyncStorage.setItem('userRole', role);
+        
+        // Use a small delay to ensure AsyncStorage is updated
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = role === 'admin' ? '/' : '/dyeing-master';
+          } else {
+            router.replace(role === 'admin' ? '/' : '/dyeing-master');
+          }
+        }, 100);
       } catch (error) {
         console.error('Error saving auth state:', error);
         Alert.alert('Error', 'Failed to save login state');

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, SafeAreaView, StatusBar, Alert, Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
 
@@ -44,6 +45,35 @@ export default function DyeingMaster() {
   const [loading, setLoading] = useState(true);
   const [date] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{[key: string]: {ply2: string, ply3: string}}>({});
+
+  const handleLogout = async () => {
+    const performLogout = async () => {
+      await AsyncStorage.removeItem('isAuthenticated');
+      await AsyncStorage.removeItem('userRole');
+      if (Platform.OS === 'web') {
+        window.location.href = '/login';
+      } else {
+        router.replace('/login');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        performLogout();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: performLogout }
+      ]
+    );
+  };
 
   useEffect(() => { 
     checkAndRollover();
@@ -358,10 +388,17 @@ export default function DyeingMaster() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="#0f0f1e" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>Dyeing Master</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Dyeing Master</Text>
+          <Text style={styles.headerSubtitle}>Worker Panel</Text>
+        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.dateBar}>
         <Text style={styles.dateText}>📅 {date}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -427,9 +464,21 @@ export default function DyeingMaster() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f1e' },
-  header: { backgroundColor: '#1a1a2e', padding: 16 },
-  backText: { color: '#4CAF50', fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
+  header: { 
+    backgroundColor: '#1a1a2e', 
+    padding: 16, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333'
+  },
+  headerLeft: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
+  logoutButton: { backgroundColor: '#f44336', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  logoutText: { color: '#fff', fontWeight: 'bold' },
+  dateBar: { backgroundColor: '#1a1a2e', paddingHorizontal: 16, paddingVertical: 8 },
   dateText: { fontSize: 14, color: '#aaa' },
   scroll: { padding: 16 },
   machineCard: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
