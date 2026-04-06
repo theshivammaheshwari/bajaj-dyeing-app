@@ -62,10 +62,12 @@ export default function AddDailyTask() {
 
   const fetchExistingTask = async () => {
     try {
+      console.log('Fetching tasks for date:', date);
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
       const data = await response.json();
       
       if (data.id) {
+        console.log('Found existing task:', data.id);
         const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
         MACHINES.forEach(m => {
           const apiTasks = data[m.id] || [];
@@ -88,13 +90,14 @@ export default function AddDailyTask() {
         });
         setMachineTasks(newMachineTasks);
       } else {
+        console.log('No tasks found for this date, resetting grid');
         // Reset to empty state for new date
         setMachineTasks({
           m1: Array.from({ length: 5 }, (_, i) => ({ id: `m1-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
-          m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
-          m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
-          m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
-          m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '0', springs3ply: '0', showShadeDropdown: false, shadeSearchText: '' })),
+          m2: Array.from({ length: 5 }, (_, i) => ({ id: `m2-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+          m3: Array.from({ length: 5 }, (_, i) => ({ id: `m3-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+          m4: Array.from({ length: 5 }, (_, i) => ({ id: `m4-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
+          m5: Array.from({ length: 5 }, (_, i) => ({ id: `m5-${i}`, shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: '' })),
         });
       }
     } catch (error) {
@@ -286,7 +289,7 @@ export default function AddDailyTask() {
       });
 
       if (response.ok) {
-        showAlert('Success', 'Daily task added successfully', () => router.back());
+        showAlert('Success', 'Daily task saved successfully', () => router.back());
       } else {
         const error = await response.json();
         showAlert('Error', error.detail || 'Failed to add task');
