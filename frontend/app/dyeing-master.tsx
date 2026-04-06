@@ -17,7 +17,6 @@ const MACHINES = [
   { id: 'm5', name: 'M5', capacity: 24, totalSprings: 16 },
 ];
 
-// Helper function for showing alerts (web compatible)
 const showAlert = (title: string, message: string, onOk?: () => void) => {
   if (Platform.OS === 'web') {
     alert(`${title}: ${message}`);
@@ -46,7 +45,7 @@ export default function DyeingMaster() {
   const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [weightInputs, setWeightInputs] = useState<{[key: string]: {ply2: string, ply3: string}}>({});
+  const [weightInputs, setWeightInputs] = useState<{ [key: string]: { ply2: string; ply3: string } }>({});
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskIndex: number } | null>(null);
 
   const handleLogout = async () => {
@@ -62,23 +61,17 @@ export default function DyeingMaster() {
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to logout?');
-      if (confirmed) {
-        performLogout();
-      }
+      if (confirmed) performLogout();
       return;
     }
 
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout }
-      ]
-    );
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: performLogout },
+    ]);
   };
 
-  useEffect(() => { 
+  useEffect(() => {
     if (date === new Date().toISOString().split('T')[0]) {
       checkAndRollover();
     } else {
@@ -88,17 +81,14 @@ export default function DyeingMaster() {
 
   const checkAndRollover = async () => {
     try {
-      // Get yesterday's date
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      // Check if yesterday has any tasks
+
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${yesterdayStr}`);
       const yesterdayData = await response.json();
-      
+
       if (yesterdayData.id) {
-        // Check if yesterday has pending tasks
         let hasPending = false;
         const machines = ['m1', 'm2', 'm3', 'm4', 'm5'];
         for (const m of machines) {
@@ -108,9 +98,8 @@ export default function DyeingMaster() {
             break;
           }
         }
-        
+
         if (hasPending) {
-          // Automatically rollover
           const rolloverResponse = await fetch(
             `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/rollover-pending?from_date=${yesterdayStr}&to_date=${date}`,
             { method: 'POST' }
@@ -119,8 +108,7 @@ export default function DyeingMaster() {
           console.log('Auto-rollover:', result);
         }
       }
-      
-      // Now fetch today's tasks
+
       fetchTodayTask();
     } catch (error) {
       console.error('Rollover check error:', error);
@@ -154,7 +142,7 @@ export default function DyeingMaster() {
         const key = `${machineId}-${index}`;
         inputs[key] = {
           ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
-          ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : ''
+          ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
         };
       });
     });
@@ -175,7 +163,7 @@ export default function DyeingMaster() {
     const key = `${machineId}-${taskIndex}`;
     setWeightInputs(prev => ({
       ...prev,
-      [key]: { ...prev[key], [field]: value }
+      [key]: { ...prev[key], [field]: value },
     }));
   };
 
@@ -194,8 +182,10 @@ export default function DyeingMaster() {
         task_index: taskIndex.toString(),
         [field]: value.toString(),
       });
-      await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${params}`, 
-        { method: 'PUT' });
+      await fetch(
+        `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${params}`,
+        { method: 'PUT' }
+      );
       fetchTodayTask();
     } catch (error) {
       console.error('Error updating:', error);
@@ -224,225 +214,107 @@ export default function DyeingMaster() {
   };
 
   const revokeTask = async (machineId: string, taskIndex: number, taskStatus: string) => {
-    const message = taskStatus === 'completed' 
-      ? 'Undo this completed task? It will go back to pending.'
-      : 'Reset this task? All progress will be cleared.';
-    
+    const message =
+      taskStatus === 'completed'
+        ? 'Undo this completed task? It will go back to pending.'
+        : 'Reset this task? All progress will be cleared.';
+
     showConfirm('Reset Task', message, async () => {
       try {
-        console.log('Resetting task:', machineId, taskIndex, 'from status:', taskStatus);
-        
-        // Single API call with all parameters
         const resetParams = new URLSearchParams({
           machine_id: machineId,
           task_index: taskIndex.toString(),
           status: 'pending',
         });
-        
+
         const response = await fetch(
           `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${resetParams}`,
           { method: 'PUT' }
         );
-        
-        if (!response.ok) {
-          throw new Error('Failed to reset task');
-        }
-        
-        console.log('Reset successful, refreshing data...');
-        
-        // Clear local weight inputs
+
+        if (!response.ok) throw new Error('Failed to reset task');
+
         const key = `${machineId}-${taskIndex}`;
-        setWeightInputs(prev => ({
-          ...prev,
-          [key]: { ply2: '', ply3: '' }
-            }));
-            
-            // Reload data
-            await fetchTodayTask();
-            showAlert('Success', 'Task reset to pending');
-          } catch (error) {
-            console.error('Reset error:', error);
-            showAlert('Error', 'Failed to reset task: ' + error);
-          }
+        setWeightInputs(prev => ({ ...prev, [key]: { ply2: '', ply3: '' } }));
+
+        await fetchTodayTask();
+        showAlert('Success', 'Task reset to pending');
+      } catch (error) {
+        console.error('Reset error:', error);
+        showAlert('Error', 'Failed to reset task: ' + error);
+      }
     });
-  };
-
-  const renderTaskBox = (machine: typeof MACHINES[0], task: any, index: number) => (
-    <View key={index} style={[styles.taskBox, { backgroundColor: colors.background }]}>
-      <Text style={[styles.taskTitle, { color: colors.secondary }]}>Task {index + 1}</Text>
-      <Text style={[styles.shadeText, { color: colors.text }]}>Shade #{task.shade_number}</Text>
-      <Text style={[styles.springText, { color: colors.textSecondary }]}>Springs: {task.springs_2ply} (2PLY) + {task.springs_3ply} (3PLY)</Text>
-      <View style={styles.weightRow}>
-        <View style={styles.weightInput}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>2PLY Weight (kg)</Text>
-          <TextInput style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]} placeholder="Enter weight (e.g., 10.500)" keyboardType="decimal-pad"
-            value={weightInputs[`${machine.id}-${index}`]?.ply2 || ''}
-            onChangeText={(val) => updateLocalWeight(machine.id, index, 'ply2', val)}
-            onBlur={() => saveWeight(machine.id, index, 'ply2')} />
-        </View>
-        <View style={styles.weightInput}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>3PLY Weight (kg)</Text>
-          <TextInput style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]} placeholder="Enter weight (e.g., 5.250)" keyboardType="decimal-pad"
-            value={weightInputs[`${machine.id}-${index}`]?.ply3 || ''}
-            onChangeText={(val) => updateLocalWeight(machine.id, index, 'ply3', val)}
-            onBlur={() => saveWeight(machine.id, index, 'ply3')} />
-        </View>
-      </View>
-      <View style={styles.buttonRow}>
-        {task.status !== 'in-progress' && task.status !== 'completed' && task.status !== 'rejected' && (
-          <TouchableOpacity style={[styles.startButton, { backgroundColor: colors.primary }]} onPress={() => startTask(machine.id, index)}>
-            <Text style={styles.buttonText}>Start</Text>
-          </TouchableOpacity>
-        )}
-        {task.status === 'in-progress' && (<>
-          <TouchableOpacity style={[styles.completeButton, { backgroundColor: colors.secondary }]} onPress={() => completeTask(machine.id, index)}>
-            <Text style={styles.buttonText}>Complete</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.rejectButton, { backgroundColor: colors.danger }]} onPress={() => rejectTask(machine.id, index)}>
-            <Text style={styles.buttonText}>Reject</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.revokeButton} onPress={() => revokeTask(machine.id, index, task.status)}>
-            <Text style={styles.buttonText}>↺</Text>
-          </TouchableOpacity>
-        </>)}
-        {task.status === 'completed' && (
-          <View style={styles.completedRow}>
-            <Text style={styles.completedText}>✓ Completed</Text>
-            <TouchableOpacity style={styles.revokeButtonSmall} onPress={() => revokeTask(machine.id, index, task.status)}>
-              <Text style={styles.buttonText}>Undo</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {task.status === 'rejected' && (
-          <View style={styles.completedRow}>
-            <Text style={styles.rejectedText}>✕ Rejected</Text>
-            <TouchableOpacity style={styles.revokeButtonSmall} onPress={() => revokeTask(machine.id, index, task.status)}>
-              <Text style={styles.buttonText}>Undo</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-      {task.start_time && <Text style={styles.timeText}>Started: {new Date(task.start_time).toLocaleTimeString()}</Text>}
-      {task.end_time && <Text style={styles.timeText}>Ended: {new Date(task.end_time).toLocaleTimeString()}</Text>}
-    </View>
-  );
-
-  const renderMachineTasks = (machine: typeof MACHINES[0]) => {
-    const tasks = dailyTask?.[machine.id] || [];
-    if (tasks.length === 0) {
-      return (
-        <View style={styles.machineCard}>
-          <Text style={styles.machineName}>{machine.name}</Text>
-          <Text style={styles.noTasks}>No tasks</Text>
-        </View>
-      );
-    }
-    const pendingTasks = tasks.filter((t: any) => t.status === 'pending' || !t.status);
-    const inProgressTasks = tasks.filter((t: any) => t.status === 'in-progress');
-    const completedTasks = tasks.filter((t: any) => t.status === 'completed');
-    const rejectedTasks = tasks.filter((t: any) => t.status === 'rejected');
-
-    return (
-      <View style={styles.machineCard}>
-        <Text style={styles.machineName}>{machine.name}</Text>
-        {pendingTasks.length > 0 && (
-          <View style={styles.statusSection}>
-            <Text style={styles.statusTitle}>⏳ Pending ({pendingTasks.length})</Text>
-            {tasks.map((task: any, index: number) => {
-              if (task.status !== 'pending' && task.status) return null;
-              return renderTaskBox(machine, task, index);
-            })}
-          </View>
-        )}
-        {inProgressTasks.length > 0 && (
-          <View style={styles.statusSection}>
-            <Text style={[styles.statusTitle, styles.inProgressTitle]}>🔄 In Progress ({inProgressTasks.length})</Text>
-            {tasks.map((task: any, index: number) => {
-              if (task.status !== 'in-progress') return null;
-              return renderTaskBox(machine, task, index);
-            })}
-          </View>
-        )}
-        {completedTasks.length > 0 && (
-          <View style={styles.statusSection}>
-            <Text style={[styles.statusTitle, styles.completedTitle]}>✓ Completed ({completedTasks.length})</Text>
-            {tasks.map((task: any, index: number) => {
-              if (task.status !== 'completed') return null;
-              return renderTaskBox(machine, task, index);
-            })}
-          </View>
-        )}
-        {rejectedTasks.length > 0 && (
-          <View style={styles.statusSection}>
-            <Text style={[styles.statusTitle, styles.rejectedTitle]}>✕ Rejected ({rejectedTasks.length})</Text>
-            {tasks.map((task: any, index: number) => {
-              if (task.status !== 'rejected') return null;
-              return renderTaskBox(machine, task, index);
-            })}
-          </View>
-        )}
-      </View>
-    );
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <StatusBar
+        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.headerBackground}
+      />
+
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
+            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+        <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+          <TextInput
+            style={[styles.dateInput, { color: colors.primary }]}
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
+      </View>
+
       <ScrollView
         style={styles.verticalScrollView}
         contentContainerStyle={styles.verticalScrollContent}
         showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
-              <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <TextInput
-              style={[styles.dateInput, { color: colors.primary }]}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-        </View>
-
-        <ScrollView 
+        <ScrollView
           style={styles.horizontalScrollView}
-          contentContainerStyle={styles.horizontalScrollContent} 
+          contentContainerStyle={styles.horizontalScrollContent}
           horizontal={true}
           showsHorizontalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.gridContainer}>
-            {/* Top Row: Machine Info Cards */}
+            {/* Machine Header Row */}
             <View style={styles.gridRow}>
               <View style={styles.rowNumberCell}>
                 <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
               </View>
               {MACHINES.map(machine => {
                 const tasks = dailyTask?.[machine.id] || [];
-                const totalSpringsUsed = tasks.reduce((sum: number, task: any) => 
-                  sum + (task.springs_2ply || 0) + (task.springs_3ply || 0), 0
+                const totalSpringsUsed = tasks.reduce(
+                  (sum: number, task: any) => sum + (task.springs_2ply || 0) + (task.springs_3ply || 0),
+                  0
                 );
                 return (
                   <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
                     <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
                     <View style={styles.machineStats}>
-                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
-                      <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>
+                        {machine.capacity}kg
+                      </Text>
+                      <Text style={[styles.machineCountText, { color: '#fff' }]}>
+                        {totalSpringsUsed}/{machine.totalSprings}
+                      </Text>
                     </View>
                   </View>
                 );
@@ -463,153 +335,200 @@ export default function DyeingMaster() {
                   {MACHINES.map(machine => {
                     const tasks = dailyTask?.[machine.id] || [];
                     const task = tasks[rowIndex];
-                    const isActive = activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
+                    const isActive =
+                      activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
 
                     return (
-                      <View 
-                        key={machine.id} 
+                      <View
+                        key={machine.id}
                         style={[
-                          styles.gridCell, 
+                          styles.gridCell,
                           { backgroundColor: colors.card, borderColor: colors.border },
                           isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
-                          task ? (
-                            task.status === 'completed' ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] :
-                            task.status === 'rejected' ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }] :
-                            task.status === 'in-progress' ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }] :
-                            null
-                          ) : null
+                          task
+                            ? task.status === 'completed'
+                              ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }]
+                              : task.status === 'rejected'
+                              ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }]
+                              : task.status === 'in-progress'
+                              ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }]
+                              : null
+                            : null,
                         ]}
                       >
                         {task ? (
                           <>
-                            <TouchableOpacity 
-                              style={styles.cellHeader} 
+                            <TouchableOpacity
+                              style={styles.cellHeader}
                               onPress={() => router.push(`/shade-detail?shadeId=${task.shade_id}`)}
                             >
                               <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                                 #{task.shade_number}
                               </Text>
-                              <TouchableOpacity 
-                                onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
+                              <TouchableOpacity
+                                onPress={() =>
+                                  setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })
+                                }
                                 style={styles.statusToggle}
                               >
-                                <Text style={[styles.statusIndicator, { 
-                                  color: task.status === 'completed' ? colors.success : 
-                                         task.status === 'rejected' ? colors.danger : 
-                                         task.status === 'in-progress' ? colors.secondary : 
-                                         colors.textSecondary 
-                                }]}>
-                                  {task.status === 'completed' ? '✓' : 
-                                   task.status === 'rejected' ? '✕' : 
-                                   task.status === 'in-progress' ? '●' : '○'}
+                                <Text
+                                  style={[
+                                    styles.statusIndicator,
+                                    {
+                                      color:
+                                        task.status === 'completed'
+                                          ? colors.success
+                                          : task.status === 'rejected'
+                                          ? colors.danger
+                                          : task.status === 'in-progress'
+                                          ? colors.secondary
+                                          : colors.textSecondary,
+                                    },
+                                  ]}
+                                >
+                                  {task.status === 'completed'
+                                    ? '✓'
+                                    : task.status === 'rejected'
+                                    ? '✕'
+                                    : task.status === 'in-progress'
+                                    ? '●'
+                                    : '○'}
                                 </Text>
                               </TouchableOpacity>
-                          </TouchableOpacity>
-
-                          {isActive ? (
-                            <View style={styles.inlineEditor}>
-                              <View style={styles.weightInputsContainer}>
-                                <View style={styles.weightInputWrap}>
-                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>2P kg</Text>
-                                  <TextInput
-                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
-                                    onChangeText={(val) => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
-                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
-                                    keyboardType="decimal-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={colors.textSecondary}
-                                  />
-                                </View>
-                                <View style={styles.weightInputWrap}>
-                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>3P kg</Text>
-                                  <TextInput
-                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
-                                    onChangeText={(val) => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
-                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
-                                    keyboardType="decimal-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={colors.textSecondary}
-                                  />
-                                </View>
-                              </View>
-
-                              <View style={styles.actionButtons}>
-                                {task.status !== 'in-progress' && task.status !== 'completed' && task.status !== 'rejected' && (
-                                  <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.primary }]} onPress={() => startTask(machine.id, rowIndex)}>
-                                    <Text style={styles.actionButtonText}>Start</Text>
-                                  </TouchableOpacity>
-                                )}
-                                {task.status === 'in-progress' && (
-                                  <View style={styles.progressActions}>
-                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.success }]} onPress={() => completeTask(machine.id, rowIndex)}>
-                                      <Text style={styles.actionButtonText}>✓</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.danger }]} onPress={() => rejectTask(machine.id, rowIndex)}>
-                                      <Text style={styles.actionButtonText}>✕</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]} onPress={() => revokeTask(machine.id, rowIndex, task.status)}>
-                                      <Text style={styles.actionButtonText}>↺</Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                )}
-                                {(task.status === 'completed' || task.status === 'rejected') && (
-                                  <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]} onPress={() => revokeTask(machine.id, rowIndex, task.status)}>
-                                    <Text style={styles.actionButtonText}>Reset</Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                            </View>
-                          ) : (
-                            <TouchableOpacity 
-                              style={styles.cellSummary}
-                              onPress={() => setActiveTask({ machineId: machine.id, taskIndex: rowIndex })}
-                            >
-                              <View style={styles.summaryWeights}>
-                                <Text style={[styles.summaryWeightText, { color: colors.text }]}>W: {(parseFloat(task.ply2_weight || 0) + parseFloat(task.ply3_weight || 0)).toFixed(2)}kg</Text>
-                                <Text style={[styles.summarySpringText, { color: colors.textSecondary }]}>S: {task.springs_2ply + task.springs_3ply}</Text>
-                              </View>
                             </TouchableOpacity>
-                          )}
-                        </>
-                      ) : (
-                        <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ))
-          )}
 
-          {payment && (
-            <View style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.paymentTitle, { color: colors.text }]}>💰 Payment Summary</Text>
-              <View style={styles.paymentFlex}>
-                <View style={styles.paymentStat}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
-                  <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment}</Text>
-                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg} kg</Text>
+                            {isActive ? (
+                              <View style={styles.inlineEditor}>
+                                <View style={styles.weightInputsContainer}>
+                                  <View style={styles.weightInputWrap}>
+                                    <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>2P kg</Text>
+                                    <TextInput
+                                      style={[
+                                        styles.smallInput,
+                                        { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
+                                      ]}
+                                      value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
+                                      onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
+                                      onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={colors.textSecondary}
+                                    />
+                                  </View>
+                                  <View style={styles.weightInputWrap}>
+                                    <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>3P kg</Text>
+                                    <TextInput
+                                      style={[
+                                        styles.smallInput,
+                                        { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
+                                      ]}
+                                      value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
+                                      onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
+                                      onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={colors.textSecondary}
+                                    />
+                                  </View>
+                                </View>
+
+                                <View style={styles.actionButtons}>
+                                  {task.status !== 'in-progress' &&
+                                    task.status !== 'completed' &&
+                                    task.status !== 'rejected' && (
+                                      <TouchableOpacity
+                                        style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
+                                        onPress={() => startTask(machine.id, rowIndex)}
+                                      >
+                                        <Text style={styles.actionButtonText}>Start</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                  {task.status === 'in-progress' && (
+                                    <View style={styles.progressActions}>
+                                      <TouchableOpacity
+                                        style={[styles.smallActionButton, { backgroundColor: colors.success }]}
+                                        onPress={() => completeTask(machine.id, rowIndex)}
+                                      >
+                                        <Text style={styles.actionButtonText}>✓</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
+                                        onPress={() => rejectTask(machine.id, rowIndex)}
+                                      >
+                                        <Text style={styles.actionButtonText}>✕</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
+                                        onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                      >
+                                        <Text style={styles.actionButtonText}>↺</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                  )}
+                                  {(task.status === 'completed' || task.status === 'rejected') && (
+                                    <TouchableOpacity
+                                      style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
+                                      onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                    >
+                                      <Text style={styles.actionButtonText}>Reset</Text>
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.cellSummary}
+                                onPress={() => setActiveTask({ machineId: machine.id, taskIndex: rowIndex })}
+                              >
+                                <View style={styles.summaryWeights}>
+                                  <Text style={[styles.summaryWeightText, { color: colors.text }]}>
+                                    W: {(parseFloat(task.ply2_weight || 0) + parseFloat(task.ply3_weight || 0)).toFixed(2)}kg
+                                  </Text>
+                                  <Text style={[styles.summarySpringText, { color: colors.textSecondary }]}>
+                                    S: {task.springs_2ply + task.springs_3ply}
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        ) : (
+                          <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
+                        )}
+                      </View>
+                    );
+                  })}
                 </View>
-                <View style={styles.paymentStat}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rejected</Text>
-                  <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment}</Text>
-                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg} kg</Text>
-                </View>
-                <View style={styles.paymentStat}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
-                  <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment}</Text>
-                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg} kg</Text>
+              ))
+            )}
+
+            {payment && (
+              <View style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.paymentTitle, { color: colors.text }]}>💰 Payment Summary</Text>
+                <View style={styles.paymentFlex}>
+                  <View style={styles.paymentStat}>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
+                    <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg} kg</Text>
+                  </View>
+                  <View style={styles.paymentStat}>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rejected</Text>
+                    <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg} kg</Text>
+                  </View>
+                  <View style={styles.paymentStat}>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
+                    <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg} kg</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        </ScrollView>
       </ScrollView>
-    </ScrollView>
-  </SafeAreaView>
-);
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -834,7 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    width: 920, // To match roughly 5 columns + padding
+    width: 920,
   },
   paymentTitle: {
     fontSize: 20,
