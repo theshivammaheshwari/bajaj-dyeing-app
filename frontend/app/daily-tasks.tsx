@@ -460,16 +460,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
   addButtonText: {
     color: '#fff',
     fontSize: 18,
