@@ -803,51 +803,6 @@ const styles = StyleSheet.create({
   },
 });
 
-    borderRadius: 12,
-    marginHorizontal: 4,
-    padding: 6,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  activeGridCell: {
-    zIndex: 10,
-    elevation: 5,
-  },
-  filledGridCell: {
-  },
-  cellHeader: {
-    borderBottomWidth: 1,
-    paddingBottom: 4,
-    marginBottom: 6,
-  },
-  cellShadeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  filledText: {
-  },
-  inlineEditor: {
-    marginTop: 2,
-  },
-  inlineShadeInput: {
-    borderRadius: 6,
-    padding: 6,
-    fontSize: 13,
-    borderWidth: 1,
-    textAlign: 'center',
-  },
-  inlineDropdown: {
-    position: 'absolute',
-    top: 35, // Adjusted to be slightly below the input
-    left: -4, // Slightly wider to cover cell borders
-    right: -4,
-    borderRadius: 8,
-    maxHeight: 250, // Increased height
-    zIndex: 10000, // Very high zIndex to overlap everything
-    elevation: 20,
-    borderWidth: 2, // Thicker border
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.8,
     shadowRadius: 15,
