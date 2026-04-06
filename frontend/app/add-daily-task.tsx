@@ -363,7 +363,7 @@ export default function AddDailyTask() {
 
             {/* Task Grid Rows */}
             {Array.from({ length: maxRows }).map((_, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
+              <View key={rowIndex} style={[styles.gridRow, { zIndex: maxRows - rowIndex }]}>
                 <View style={styles.rowNumberCell}>
                   <Text style={styles.rowNumberText}>{rowIndex + 1}</Text>
                 </View>
@@ -377,7 +377,8 @@ export default function AddDailyTask() {
                       style={[
                         styles.gridCell, 
                         isActive && styles.activeGridCell,
-                        task?.shadeId ? styles.filledGridCell : null
+                        task?.shadeId ? styles.filledGridCell : null,
+                        { zIndex: isActive ? 100 : 1 }
                       ]}
                     >
                       {task ? (
@@ -651,19 +652,19 @@ const styles = StyleSheet.create({
   inlineDropdown: {
     position: 'absolute',
     top: 35, // Adjusted to be slightly below the input
-    left: 0,
-    right: 0,
+    left: -4, // Slightly wider to cover cell borders
+    right: -4,
     backgroundColor: '#2a2a3e',
     borderRadius: 8,
     maxHeight: 250, // Increased height
-    zIndex: 1000, // Higher zIndex to overlap everything
-    elevation: 10,
+    zIndex: 10000, // Very high zIndex to overlap everything
+    elevation: 20,
     borderWidth: 2, // Thicker border
     borderColor: '#4CAF50',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
   },
   inlineDropdownItem: {
     padding: 12, // More padding for touch targets
