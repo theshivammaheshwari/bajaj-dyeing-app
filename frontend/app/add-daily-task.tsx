@@ -39,6 +39,7 @@ interface MachineTaskData {
   springs3ply: string;
   showShadeDropdown: boolean;
   shadeSearchText: string;
+  error?: string;
 }
 
 const emptyTask = (machineId: string, index: number): MachineTaskData => ({
@@ -49,6 +50,7 @@ const emptyTask = (machineId: string, index: number): MachineTaskData => ({
   springs3ply: '',
   showShadeDropdown: false,
   shadeSearchText: '',
+  error: '',
 });
 
 const initialMachineTasks = () => {
@@ -67,6 +69,7 @@ export default function AddDailyTask() {
   const [loading, setLoading] = useState(false);
   const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>(initialMachineTasks());
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     fetchShades();
@@ -92,6 +95,7 @@ export default function AddDailyTask() {
             springs3ply: t.springs_3ply !== undefined ? String(t.springs_3ply) : '0',
             showShadeDropdown: false,
             shadeSearchText: t.shade_number ? String(t.shade_number) : '',
+            error: '',
           }));
           while (newMachineTasks[m.id].length < 5) {
             newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
@@ -144,14 +148,34 @@ export default function AddDailyTask() {
       }));
     } else if (field === 'springs2ply' || field === 'springs3ply') {
       const numVal = parseInt(value as string) || 0;
-      if (numVal < 0 || numVal > max) return;
+      let error = '';
+
+      if (numVal < 0) {
+        error = 'Cannot be negative';
+      } else if (numVal > max) {
+        error = `Exceeds capacity (${max})`;
+      }
+
+      if (error) {
+        // Set error but still allow the value to show
+        setMachineTasks(prev => ({
+          ...prev,
+          [machineId]: prev[machineId].map(task =>
+            task.id === taskId
+              ? { ...task, [field]: value, error }
+              : task
+          ),
+        }));
+        return;
+      }
+
       const otherField = field === 'springs2ply' ? 'springs3ply' : 'springs2ply';
       const otherVal = Math.max(0, max - numVal).toString();
       setMachineTasks(prev => ({
         ...prev,
         [machineId]: prev[machineId].map(task =>
           task.id === taskId
-            ? { ...task, [field]: value, [otherField]: otherVal }
+            ? { ...task, [field]: value, [otherField]: otherVal, error: '' }
             : task
         ),
       }));
@@ -184,11 +208,47 @@ export default function AddDailyTask() {
           springs3ply: '',
           showShadeDropdown: false,
           shadeSearchText: '',
+          error: '',
         };
         updated[machine.id] = [...updated[machine.id], newTask];
       });
       return updated;
     });
+  };
+
+  const deleteRow = (rowIndex: number) => {
+    const doDelete = () => {
+      setMachineTasks(prev => {
+        const updated = { ...prev };
+        MACHINES.forEach(machine => {
+          updated[machine.id] = prev[machine.id].filter((_, idx) => idx !== rowIndex);
+        });
+        // Ensure at least 1 row remains
+        const hasRows = updated[MACHINES[0].id].length > 0;
+        if (!hasRows) {
+          MACHINES.forEach(machine => {
+            updated[machine.id] = [emptyTask(machine.id, 0)];
+          });
+        }
+        return updated;
+      });
+      // Close active task if it was in deleted row
+      setActiveTask(null);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Are you sure you want to delete Task ${rowIndex + 1}?`);
+      if (confirmed) doDelete();
+    } else {
+      Alert.alert(
+        'Delete Task',
+        `Are you sure you want to delete Task ${rowIndex + 1}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
   };
 
   const showAlert = (title: string, message: string, onOk?: () => void) => {
@@ -201,9 +261,31 @@ export default function AddDailyTask() {
   };
 
   const validateAndSave = async () => {
+    setSaveError('');
     if (!date) {
-      showAlert('Error', 'Please select a date');
+      setSaveError('Please select a date');
       return;
+    }
+
+    // Check for per-task capacity errors
+    for (const machine of MACHINES) {
+      const tasks = machineTasks[machine.id];
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+        if (task.shadeId && (task.springs2ply || task.springs3ply)) {
+          const ply2 = parseInt(task.springs2ply) || 0;
+          const ply3 = parseInt(task.springs3ply) || 0;
+          const total = ply2 + ply3;
+          if (total > machine.totalSprings) {
+            setSaveError(`${machine.name} Task ${i + 1}: Total (${total}) exceeds capacity (${machine.totalSprings})`);
+            return;
+          }
+          if (ply2 < 0 || ply3 < 0) {
+            setSaveError(`${machine.name} Task ${i + 1}: Values cannot be negative`);
+            return;
+          }
+        }
+      }
     }
 
     const payload: any = { date };
@@ -227,12 +309,6 @@ export default function AddDailyTask() {
         }
       }
 
-      const totalSprings = validTasks.reduce((sum, t) => sum + t.springs_2ply + t.springs_3ply, 0);
-      if (totalSprings > machine.totalSprings) {
-        showAlert('Error', `${machine.name}: Total springs (${totalSprings}) exceeds capacity (${machine.totalSprings})`);
-        return;
-      }
-
       if (validTasks.length > 0) {
         payload[machine.id] = validTasks;
         hasData = true;
@@ -240,7 +316,7 @@ export default function AddDailyTask() {
     }
 
     if (!hasData) {
-      showAlert('Error', 'Please add at least one task');
+      setSaveError('Please add at least one task');
       return;
     }
 
@@ -256,11 +332,11 @@ export default function AddDailyTask() {
         showAlert('Success', 'Daily task saved successfully', () => router.back());
       } else {
         const error = await response.json();
-        showAlert('Error', error.detail || 'Failed to add task');
+        setSaveError(error.detail || 'Failed to add task');
       }
     } catch (error) {
       console.error('Error adding task:', error);
-      showAlert('Error', 'Failed to add task');
+      setSaveError('Failed to connect to server');
     } finally {
       setLoading(false);
     }
@@ -312,11 +388,6 @@ export default function AddDailyTask() {
                   <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
                 </View>
                 {MACHINES.map(machine => {
-                  const tasks = machineTasks[machine.id];
-                  const totalSpringsUsed = tasks.reduce(
-                    (sum, task) => sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0),
-                    0
-                  );
                   return (
                     <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
                       <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
@@ -325,7 +396,7 @@ export default function AddDailyTask() {
                           {machine.capacity}kg
                         </Text>
                         <Text style={[styles.machineCountText, { color: '#fff' }]}>
-                          {totalSpringsUsed}/{machine.totalSprings}
+                          Cap: {machine.totalSprings}
                         </Text>
                       </View>
                     </View>
@@ -338,11 +409,18 @@ export default function AddDailyTask() {
                 <View key={rowIndex} style={[styles.gridRow, { zIndex: machineTasks.m1.length - rowIndex }]}>
                   <View style={styles.rowNumberCell}>
                     <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteRowBtn}
+                      onPress={() => deleteRow(rowIndex)}
+                    >
+                      <Text style={styles.deleteRowIcon}>🗑️</Text>
+                    </TouchableOpacity>
                   </View>
                   {MACHINES.map(machine => {
                     const task = machineTasks[machine.id][rowIndex];
                     const isActive =
                       activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
+                    const hasError = !!(task?.error);
 
                     return (
                       <View
@@ -354,6 +432,7 @@ export default function AddDailyTask() {
                           task?.shadeId
                             ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }]
                             : null,
+                          hasError && { borderColor: '#ef4444', borderWidth: 2 },
                           { zIndex: isActive ? 100 : 1 },
                         ]}
                       >
@@ -450,6 +529,7 @@ export default function AddDailyTask() {
                                       style={[
                                         styles.inlinePlyInput,
                                         { color: colors.text, backgroundColor: colors.inputBackground },
+                                        hasError && { borderColor: '#ef4444', borderWidth: 1 },
                                       ]}
                                       value={task.springs2ply}
                                       onChangeText={val => updateTask(machine.id, task.id, 'springs2ply', val)}
@@ -464,6 +544,7 @@ export default function AddDailyTask() {
                                       style={[
                                         styles.inlinePlyInput,
                                         { color: colors.text, backgroundColor: colors.inputBackground },
+                                        hasError && { borderColor: '#ef4444', borderWidth: 1 },
                                       ]}
                                       value={task.springs3ply}
                                       onChangeText={val => updateTask(machine.id, task.id, 'springs3ply', val)}
@@ -473,6 +554,9 @@ export default function AddDailyTask() {
                                     />
                                   </View>
                                 </View>
+                                {hasError && (
+                                  <Text style={styles.cellErrorText}>⚠ {task.error}</Text>
+                                )}
                               </View>
                             ) : (
                               <TouchableOpacity
@@ -494,8 +578,11 @@ export default function AddDailyTask() {
                                   </View>
                                 </View>
                                 <Text style={[styles.summaryTotalText, { color: colors.primary }]}>
-                                  Total: {(parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0)}
+                                  Total: {(parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0)}/{machine.totalSprings}
                                 </Text>
+                                {hasError && (
+                                  <Text style={styles.cellErrorText}>⚠ {task.error}</Text>
+                                )}
                               </TouchableOpacity>
                             )}
                           </>
@@ -517,6 +604,12 @@ export default function AddDailyTask() {
             </View>
           </ScrollView>
         </ScrollView>
+
+        {saveError ? (
+          <View style={styles.saveErrorContainer}>
+            <Text style={styles.saveErrorText}>⚠ {saveError}</Text>
+          </View>
+        ) : null}
 
         <View
           style={[
@@ -603,6 +696,13 @@ const styles = StyleSheet.create({
   rowNumberText: {
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  deleteRowBtn: {
+    marginTop: 4,
+    padding: 2,
+  },
+  deleteRowIcon: {
+    fontSize: 14,
   },
   machineInfoCard: {
     width: 180,
@@ -703,6 +803,12 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
   },
+  cellErrorText: {
+    color: '#ef4444',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+  },
   inlineEditor: {
     flex: 1,
   },
@@ -776,6 +882,19 @@ const styles = StyleSheet.create({
   gridAddRowText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  saveErrorContainer: {
+    backgroundColor: '#fef2f2',
+    borderTopWidth: 1,
+    borderTopColor: '#fecaca',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  saveErrorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   footer: {
     padding: 16,
