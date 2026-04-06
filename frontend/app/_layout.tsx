@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useRouter, Slot, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { colors } = useTheme();
 
   useEffect(() => {
     checkAuth();
@@ -66,8 +68,8 @@ export default function RootLayout() {
 
   if (isAuthenticated === null) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -75,11 +77,18 @@ export default function RootLayout() {
   return <Slot />;
 }
 
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutContent />
+    </ThemeProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0f0f1e',
   },
 });

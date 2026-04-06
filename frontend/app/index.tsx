@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -33,6 +34,7 @@ interface Shade {
 
 export default function Index() {
   const router = useRouter();
+  const { theme, colors, toggleTheme } = useTheme();
   const [shades, setShades] = useState<Shade[]>([]);
   const [filteredShades, setFilteredShades] = useState<Shade[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,11 +159,11 @@ export default function Index() {
 
   const renderShadeItem = ({ item }: { item: Shade }) => (
     <TouchableOpacity
-      style={styles.shadeCard}
+      style={[styles.shadeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={() => router.push(`/calculator?shadeId=${item.id}`)}
     >
       <View style={styles.shadeHeader}>
-        <Text style={styles.shadeNumber}>Shade #{item.shade_number}</Text>
+        <Text style={[styles.shadeNumber, { color: colors.text }]}>Shade #{item.shade_number}</Text>
         <View style={styles.badgeRow}>
           {item.rc === 'Yes' && (
             <View style={styles.rcBadge}>
@@ -174,18 +176,18 @@ export default function Index() {
         </View>
       </View>
       <View style={styles.shadeInfo}>
-        <Text style={styles.shadeWeight}>{item.original_weight} kg</Text>
-        <Text style={styles.dyesLabel}>{item.dyes.length} dyes</Text>
+        <Text style={[styles.shadeWeight, { color: colors.primary }]}>{item.original_weight} kg</Text>
+        <Text style={[styles.dyesLabel, { color: colors.textSecondary }]}>{item.dyes.length} dyes</Text>
       </View>
       <View style={styles.cardActions}>
         <TouchableOpacity
-          style={styles.editButton}
+          style={[styles.editButton, { backgroundColor: colors.secondary }]}
           onPress={() => router.push(`/edit-shade?shadeId=${item.id}`)}
         >
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[styles.deleteButton, { backgroundColor: colors.danger }]}
           onPress={() => handleDeletePress(item.id, item.shade_number)}
         >
           <Text style={styles.deleteButtonText}>Delete</Text>
@@ -195,31 +197,36 @@ export default function Index() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View>
-          <Text style={styles.headerTitle}>Bajaj Dyeing Unit</Text>
-          <Text style={styles.headerSubtitle}>Thread Dyeing Machine Recipes</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Bajaj Dyeing Unit</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Thread Dyeing Machine Recipes</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
+            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: colors.danger }]}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
           placeholder="Search by shade number..."
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <View style={styles.quickActions}>
+      <View style={[styles.quickActions, { backgroundColor: colors.card }]}>
         <TouchableOpacity
-          style={styles.quickActionButton}
+          style={[styles.quickActionButton, { backgroundColor: colors.secondary }]}
           onPress={() => router.push('/daily-tasks')}
         >
           <Text style={styles.quickActionIcon}>📋</Text>
@@ -237,14 +244,14 @@ export default function Index() {
 
       {loading ? (
         <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading shades...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading shades...</Text>
         </View>
       ) : filteredShades.length === 0 ? (
         <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             {searchQuery ? 'No shades found' : 'No shades added yet'}
           </Text>
-          <Text style={styles.emptySubtext}>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary, opacity: 0.7 }]}>
             {!searchQuery && 'Tap + button to add your first shade'}
           </Text>
         </View>
@@ -262,7 +269,7 @@ export default function Index() {
       )}
 
       <TouchableOpacity
-        style={styles.addButton}
+        style={[styles.addButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
         onPress={() => router.push('/add-shade')}
       >
         <Text style={styles.addButtonText}>+ Add Shade</Text>
@@ -274,10 +281,8 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   header: {
-    backgroundColor: '#1a1a2e',
     padding: 20,
     paddingTop: 16,
     flexDirection: 'row',
@@ -287,15 +292,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#aaa',
+  },
+  themeToggle: {
+    padding: 8,
+    borderRadius: 12,
   },
   logoutButton: {
-    backgroundColor: '#f44336',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -307,17 +313,14 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     padding: 16,
-    backgroundColor: '#1a1a2e',
   },
   quickActions: {
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#1a1a2e',
     flexDirection: 'row',
     gap: 12,
   },
   quickActionButton: {
-    backgroundColor: '#2196F3',
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,25 +339,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   searchInput: {
-    backgroundColor: '#0f0f1e',
     borderRadius: 12,
     padding: 14,
-    color: '#fff',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#333',
   },
   listContainer: {
     padding: 16,
     paddingBottom: 100,
   },
   shadeCard: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
   },
   shadeHeader: {
     flexDirection: 'row',
@@ -365,7 +363,6 @@ const styles = StyleSheet.create({
   shadeNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
     flex: 1,
   },
   badgeRow: {
@@ -407,12 +404,10 @@ const styles = StyleSheet.create({
   },
   shadeWeight: {
     fontSize: 16,
-    color: '#4CAF50',
     fontWeight: '600',
   },
   dyesLabel: {
     fontSize: 14,
-    color: '#888',
   },
   cardActions: {
     flexDirection: 'row',
@@ -421,7 +416,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    backgroundColor: '#2196F3',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -433,7 +427,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     flex: 1,
-    backgroundColor: '#f44336',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -448,11 +441,9 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 16,
     right: 16,
-    backgroundColor: '#4CAF50',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#4CAF50',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -470,18 +461,15 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   loadingText: {
-    color: '#888',
     fontSize: 16,
   },
   emptyText: {
-    color: '#888',
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtext: {
-    color: '#666',
     fontSize: 14,
     textAlign: 'center',
   },

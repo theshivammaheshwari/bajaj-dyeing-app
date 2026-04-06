@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -42,6 +43,7 @@ interface MachineTaskData {
 
 export default function AddDailyTask() {
   const router = useRouter();
+  const { colors, theme } = useTheme();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -311,25 +313,25 @@ export default function AddDailyTask() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f1e" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Daily Task</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
 
-          <View style={styles.dateInputContainer}>
+          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
             <TextInput
-              style={styles.dateInput}
+              style={[styles.dateInput, { color: colors.primary }]}
               value={date}
               onChangeText={setDate}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
         </View>
@@ -344,7 +346,7 @@ export default function AddDailyTask() {
             {/* Top Row: Machine Cards */}
             <View style={styles.gridRow}>
               <View style={styles.rowNumberCell}>
-                <Text style={styles.rowNumberText}>#</Text>
+                <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
               </View>
               {MACHINES.map(machine => {
                 const tasks = machineTasks[machine.id];
@@ -352,20 +354,20 @@ export default function AddDailyTask() {
                   sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0), 0
                 );
                 return (
-                  <View key={machine.id} style={styles.machineInfoCard}>
-                    <Text style={styles.machineNameText}>{machine.name}</Text>
-                    <Text style={styles.machineWeightText}>{machine.capacity}kg</Text>
-                    <Text style={styles.machineCountText}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                  <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
+                    <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
+                    <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
                   </View>
                 );
               })}
             </View>
 
             {/* Task Grid Rows */}
-            {Array.from({ length: maxRows }).map((_, rowIndex) => (
-              <View key={rowIndex} style={[styles.gridRow, { zIndex: maxRows - rowIndex }]}>
+            {Array.from({ length: machineTasks.m1.length }).map((_, rowIndex) => (
+              <View key={rowIndex} style={[styles.gridRow, { zIndex: machineTasks.m1.length - rowIndex }]}>
                 <View style={styles.rowNumberCell}>
-                  <Text style={styles.rowNumberText}>{rowIndex + 1}</Text>
+                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
                 </View>
                 {MACHINES.map(machine => {
                   const task = machineTasks[machine.id][rowIndex];
@@ -376,8 +378,9 @@ export default function AddDailyTask() {
                       key={machine.id} 
                       style={[
                         styles.gridCell, 
-                        isActive && styles.activeGridCell,
-                        task?.shadeId ? styles.filledGridCell : null,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                        isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
+                        task?.shadeId ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] : null,
                         { zIndex: isActive ? 100 : 1 }
                       ]}
                     >
@@ -387,17 +390,17 @@ export default function AddDailyTask() {
                             style={styles.cellHeader} 
                             onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id })}
                           >
-                            <Text style={[styles.cellShadeText, task.shadeNumber ? styles.filledText : null]}>
+                            <Text style={[styles.cellShadeText, { color: colors.textSecondary }, task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null]}>
                               {task.shadeNumber ? `#${task.shadeNumber}` : 'Shade'}
                             </Text>
                           </TouchableOpacity>
 
                           {isActive ? (
-                            <View style={styles.inlineEditor}>
+                            <View style={[styles.inlineEditor, { backgroundColor: colors.card, borderColor: colors.primary }]}>
                               <TextInput
-                                style={styles.inlineShadeInput}
+                                style={[styles.inlineShadeInput, { color: colors.text, borderBottomColor: colors.border }]}
                                 placeholder="Shade..."
-                                placeholderTextColor="#444"
+                                placeholderTextColor={colors.textSecondary}
                                 value={task.shadeSearchText}
                                 onChangeText={(value) => {
                                   updateTask(machine.id, task.id, 'shadeSearchText', value);
@@ -409,7 +412,7 @@ export default function AddDailyTask() {
                               />
                               
                               {task.showShadeDropdown && (
-                                <View style={styles.inlineDropdown}>
+                                <View style={[styles.inlineDropdown, { backgroundColor: colors.card, borderColor: colors.primary }]}>
                                   <View style={{ maxHeight: 200, minHeight: 40 }}>
                                     <ScrollView 
                                       nestedScrollEnabled={true} 
@@ -420,17 +423,17 @@ export default function AddDailyTask() {
                                         getFilteredShades(task.shadeSearchText).map((shade) => (
                                           <TouchableOpacity
                                             key={shade.id}
-                                            style={styles.inlineDropdownItem}
+                                            style={[styles.inlineDropdownItem, { borderBottomColor: colors.border }]}
                                             onPress={() => {
                                               updateTask(machine.id, task.id, 'shadeId', shade.id);
                                             }}
                                           >
-                                            <Text style={styles.inlineDropdownText}>#{shade.shade_number}</Text>
+                                            <Text style={[styles.inlineDropdownText, { color: colors.text }]}>#{shade.shade_number}</Text>
                                           </TouchableOpacity>
                                         ))
                                       ) : (
                                         <View style={styles.inlineDropdownItem}>
-                                          <Text style={[styles.inlineDropdownText, { color: '#666' }]}>No Match</Text>
+                                          <Text style={[styles.inlineDropdownText, { color: colors.textSecondary }]}>No Match</Text>
                                         </View>
                                       )}
                                     </ScrollView>
@@ -440,25 +443,25 @@ export default function AddDailyTask() {
 
                               <View style={styles.inlinePlyRow}>
                                 <View style={styles.inlinePlyInputWrap}>
-                                  <Text style={styles.inlinePlyLabel}>2P</Text>
+                                  <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>2P</Text>
                                   <TextInput
-                                    style={styles.inlinePlyInput}
+                                    style={[styles.inlinePlyInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
                                     value={task.springs2ply}
                                     onChangeText={(val) => updateTask(machine.id, task.id, 'springs2ply', val)}
                                     keyboardType="number-pad"
                                     placeholder="0"
-                                    placeholderTextColor="#444"
+                                    placeholderTextColor={colors.textSecondary}
                                   />
                                 </View>
                                 <View style={styles.inlinePlyInputWrap}>
-                                  <Text style={styles.inlinePlyLabel}>3P</Text>
+                                  <Text style={[styles.inlinePlyLabel, { color: colors.textSecondary }]}>3P</Text>
                                   <TextInput
-                                    style={styles.inlinePlyInput}
+                                    style={[styles.inlinePlyInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
                                     value={task.springs3ply}
                                     onChangeText={(val) => updateTask(machine.id, task.id, 'springs3ply', val)}
                                     keyboardType="number-pad"
                                     placeholder="0"
-                                    placeholderTextColor="#444"
+                                    placeholderTextColor={colors.textSecondary}
                                   />
                                 </View>
                               </View>
@@ -476,15 +479,15 @@ export default function AddDailyTask() {
                               }}
                             >
                               <View style={styles.summaryPlyRow}>
-                                <Text style={styles.summaryPlyText}>{task.springs2ply || 0}P</Text>
-                                <Text style={styles.summaryPlyDivider}>+</Text>
-                                <Text style={styles.summaryPlyText}>{task.springs3ply || 0}P</Text>
+                                <Text style={[styles.summaryPlyText, { color: colors.text }]}>{task.springs2ply || 0}P</Text>
+                                <Text style={[styles.summaryPlyDivider, { color: colors.textSecondary }]}>+</Text>
+                                <Text style={[styles.summaryPlyText, { color: colors.text }]}>{task.springs3ply || 0}P</Text>
                               </View>
                             </TouchableOpacity>
                           )}
                         </>
                       ) : (
-                        <Text style={styles.emptyCellText}>-</Text>
+                        <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
                       )}
                     </View>
                   );
@@ -493,15 +496,15 @@ export default function AddDailyTask() {
             ))}
 
             {/* Add Row Button */}
-            <TouchableOpacity style={styles.gridAddRowButton} onPress={addRow}>
-              <Text style={styles.gridAddRowText}>+ Add Row</Text>
+            <TouchableOpacity style={[styles.gridAddRowButton, { backgroundColor: colors.inputBackground, borderColor: colors.border }]} onPress={addRow}>
+              <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add Row</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.headerBackground, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton, { backgroundColor: colors.primary }, loading && styles.saveButtonDisabled]}
             onPress={validateAndSave}
             disabled={loading}
           >
@@ -518,7 +521,6 @@ export default function AddDailyTask() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   keyboardView: {
     flex: 1,
@@ -533,25 +535,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backButtonText: {
-    color: '#4CAF50',
     fontSize: 16,
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     flex: 1,
   },
   dateInputContainer: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#333',
     paddingHorizontal: 12,
   },
   dateInput: {
-    color: '#4CAF50',
     fontSize: 14,
     fontWeight: 'bold',
     paddingVertical: 4,
@@ -572,14 +569,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowNumberText: {
-    color: '#555',
     fontWeight: 'bold',
     fontSize: 12,
   },
   machineInfoCard: {
     width: 90,
     height: 90,
-    backgroundColor: '#4CAF50',
     borderRadius: 12,
     marginHorizontal: 4,
     padding: 8,
@@ -587,12 +582,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   machineNameText: {
-    color: '#fff',
     fontWeight: 'bold',
     fontSize: 18,
   },
   machineWeightText: {
-    color: 'rgba(255,255,255,0.7)',
     fontSize: 10,
   },
   machineCountText: {
@@ -604,49 +597,38 @@ const styles = StyleSheet.create({
   gridCell: {
     width: 90,
     minHeight: 110,
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     marginHorizontal: 4,
     padding: 6,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
     justifyContent: 'center',
   },
   activeGridCell: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#1e1e30',
     zIndex: 10,
     elevation: 5,
   },
   filledGridCell: {
-    borderColor: '#2e7d32',
   },
   cellHeader: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a3e',
     paddingBottom: 4,
     marginBottom: 6,
   },
   cellShadeText: {
-    color: '#666',
     fontSize: 12,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   filledText: {
-    color: '#4CAF50',
   },
   inlineEditor: {
     marginTop: 2,
   },
   inlineShadeInput: {
-    backgroundColor: '#0f0f1e',
     borderRadius: 6,
     padding: 6,
-    color: '#fff',
     fontSize: 13,
     borderWidth: 1,
-    borderColor: '#333',
     textAlign: 'center',
   },
   inlineDropdown: {
@@ -654,13 +636,11 @@ const styles = StyleSheet.create({
     top: 35, // Adjusted to be slightly below the input
     left: -4, // Slightly wider to cover cell borders
     right: -4,
-    backgroundColor: '#2a2a3e',
     borderRadius: 8,
     maxHeight: 250, // Increased height
     zIndex: 10000, // Very high zIndex to overlap everything
     elevation: 20,
     borderWidth: 2, // Thicker border
-    borderColor: '#4CAF50',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.8,
@@ -669,10 +649,8 @@ const styles = StyleSheet.create({
   inlineDropdownItem: {
     padding: 12, // More padding for touch targets
     borderBottomWidth: 1,
-    borderBottomColor: '#3a3a4e',
   },
   inlineDropdownText: {
-    color: '#fff',
     fontSize: 14, // Larger text
     fontWeight: 'bold',
     textAlign: 'center',
@@ -688,21 +666,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inlinePlyLabel: {
-    color: '#555',
     fontSize: 8,
     fontWeight: 'bold',
     marginBottom: 2,
   },
   inlinePlyInput: {
-    backgroundColor: '#0f0f1e',
     borderRadius: 6,
     width: '100%',
     padding: 4,
-    color: '#fff',
     fontSize: 12,
     textAlign: 'center',
     borderWidth: 1,
-    borderColor: '#333',
   },
   cellSummary: {
     flex: 1,
@@ -715,23 +689,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   summaryPlyText: {
-    color: '#888',
     fontSize: 13,
     fontWeight: 'bold',
   },
   summaryPlyDivider: {
-    color: '#333',
     fontSize: 10,
   },
   emptyCellText: {
-    color: '#222',
     textAlign: 'center',
   },
   gridAddRowButton: {
     width: 470, // Adjusted for 90px cells
     height: 50,
     borderWidth: 1,
-    borderColor: '#4CAF50',
     borderStyle: 'dashed',
     borderRadius: 12,
     marginTop: 16,
@@ -740,17 +710,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gridAddRowText: {
-    color: '#4CAF50',
     fontWeight: '600',
   },
   footer: {
     padding: 16,
-    backgroundColor: '#0f0f1e',
     borderTopWidth: 1,
-    borderTopColor: '#2a2a3e',
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

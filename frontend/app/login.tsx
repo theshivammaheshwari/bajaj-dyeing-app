@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../context/ThemeContext';
 
 const ADMIN_PASSWORD = '3112';
 const USER_PASSWORD = '3020';
 
 export default function Login() {
   const router = useRouter();
+  const { colors, theme } = useTheme();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,30 +65,30 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f1e" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <Text style={styles.appName}>🎨 Bajaj Dyeing Unit</Text>
-            <Text style={styles.subtitle}>Thread Dyeing Recipe Calculator</Text>
+            <Text style={[styles.appName, { color: colors.text }]}>🎨 Bajaj Dyeing Unit</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Thread Dyeing Recipe Calculator</Text>
           </View>
 
-          <View style={styles.loginCard}>
-            <Text style={styles.title}>Enter Password</Text>
-            <Text style={styles.description}>
+          <View style={[styles.loginCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.title, { color: colors.text }]}>Enter Password</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
               Enter your password to access the app
             </Text>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
                 placeholder="Enter password"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -98,7 +100,7 @@ export default function Login() {
             </View>
 
             <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+              style={[styles.loginButton, { backgroundColor: colors.primary }, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
@@ -109,8 +111,8 @@ export default function Login() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>🔒 Secure Access</Text>
-            <Text style={styles.footerSubtext}>
+            <Text style={[styles.footerText, { color: colors.primary }]}>🔒 Secure Access</Text>
+            <Text style={[styles.footerSubtext, { color: colors.textSecondary }]}>
               Your data is protected with password authentication
             </Text>
           </View>
@@ -123,7 +125,6 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   keyboardView: {
     flex: 1,
@@ -140,30 +141,24 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
     textAlign: 'center',
   },
   loginCard: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#888',
     marginBottom: 24,
   },
   inputContainer: {
@@ -171,22 +166,17 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#aaa',
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#0f0f1e',
     borderRadius: 12,
     padding: 16,
-    color: '#fff',
     fontSize: 18,
     borderWidth: 1,
-    borderColor: '#333',
     letterSpacing: 4,
   },
   loginButton: {
-    backgroundColor: '#4CAF50',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -205,13 +195,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 16,
-    color: '#4CAF50',
     fontWeight: '600',
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 12,
-    color: '#666',
     textAlign: 'center',
   },
 });

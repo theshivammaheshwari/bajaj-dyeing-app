@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -37,6 +38,7 @@ interface DailyTask {
 
 export default function DailyTasks() {
   const router = useRouter();
+  const { theme, colors } = useTheme();
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -155,32 +157,32 @@ export default function DailyTasks() {
   const renderMachineInfo = (machines: MachineTask[] | undefined, machineName: string) => {
     if (!machines || machines.length === 0) {
       return (
-        <View style={styles.machineCard}>
-          <Text style={styles.machineName}>{machineName}</Text>
-          <Text style={styles.noData}>No tasks</Text>
+        <View style={[styles.machineCard, { backgroundColor: colors.background, borderLeftColor: colors.primary }]}>
+          <Text style={[styles.machineName, { color: colors.primary }]}>{machineName}</Text>
+          <Text style={[styles.noData, { color: colors.textSecondary }]}>No tasks</Text>
         </View>
       );
     }
 
     return (
-      <View style={styles.machineCard}>
-        <Text style={styles.machineName}>{machineName} ({machines.length} tasks)</Text>
+      <View style={[styles.machineCard, { backgroundColor: colors.background, borderLeftColor: colors.primary }]}>
+        <Text style={[styles.machineName, { color: colors.primary }]}>{machineName} ({machines.length} tasks)</Text>
         {machines.map((task, index) => (
-          <View key={index} style={styles.taskItem}>
-            <Text style={styles.taskNumber}>Task {index + 1}</Text>
-            <Text style={styles.shadeText}>Shade #{task.shade_number}</Text>
+          <View key={index} style={[styles.taskItem, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <Text style={[styles.taskNumber, { color: colors.textSecondary }]}>Task {index + 1}</Text>
+            <Text style={[styles.shadeText, { color: colors.text }]}>Shade #{task.shade_number}</Text>
             <View style={styles.springRow}>
               <View style={styles.springItem}>
-                <Text style={styles.springLabel}>2PLY</Text>
-                <Text style={styles.springValue}>{task.springs_2ply}</Text>
+                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>2PLY</Text>
+                <Text style={[styles.springValue, { color: colors.text }]}>{task.springs_2ply}</Text>
               </View>
               <View style={styles.springItem}>
-                <Text style={styles.springLabel}>3PLY</Text>
-                <Text style={styles.springValue}>{task.springs_3ply}</Text>
+                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>3PLY</Text>
+                <Text style={[styles.springValue, { color: colors.text }]}>{task.springs_3ply}</Text>
               </View>
               <View style={styles.springItem}>
-                <Text style={styles.springLabel}>Total</Text>
-                <Text style={styles.springValueTotal}>
+                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>Total</Text>
+                <Text style={[styles.springValueTotal, { color: colors.primary }]}>
                   {task.springs_2ply + task.springs_3ply}
                 </Text>
               </View>
@@ -192,18 +194,18 @@ export default function DailyTasks() {
   };
 
   const renderTaskItem = ({ item }: { item: DailyTask }) => (
-    <View style={styles.taskCard}>
+    <View style={[styles.taskCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.taskHeader}>
-        <Text style={styles.dateText}>📅 {item.date}</Text>
+        <Text style={[styles.dateText, { color: colors.text }]}>📅 {item.date}</Text>
         <View style={styles.taskActions}>
           <TouchableOpacity
-            style={styles.editBtn}
+            style={[styles.editBtn, { backgroundColor: colors.secondary }]}
             onPress={() => router.push(`/edit-daily-task?taskId=${item.id}`)}
           >
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.deleteBtn}
+            style={[styles.deleteBtn, { backgroundColor: colors.danger }]}
             onPress={() => handleDeletePress(item.id, item.date)}
           >
             <Text style={styles.deleteBtnText}>Delete</Text>
@@ -238,24 +240,24 @@ export default function DailyTasks() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backLink}>← Back</Text>
+          <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Daily Machine Tasks</Text>
-        <Text style={styles.headerSubtitle}>Track daily production</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Daily Machine Tasks</Text>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Track daily production</Text>
       </View>
 
       {loading ? (
         <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading tasks...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading tasks...</Text>
         </View>
       ) : tasks.length === 0 ? (
         <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>No tasks created yet</Text>
-          <Text style={styles.emptySubtext}>Tap + button to add today's task</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>No tasks created yet</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Tap + button to add today's task</Text>
         </View>
       ) : (
         <FlatList
@@ -268,7 +270,7 @@ export default function DailyTasks() {
       )}
 
       <TouchableOpacity
-        style={styles.addButton}
+        style={[styles.addButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
         onPress={() => router.push('/add-daily-task')}
       >
         <Text style={styles.addButtonText}>+ Add Daily Task</Text>
@@ -280,15 +282,12 @@ export default function DailyTasks() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   header: {
-    backgroundColor: '#1a1a2e',
     padding: 16,
     paddingTop: 8,
   },
   backLink: {
-    color: '#4CAF50',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -296,24 +295,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#aaa',
   },
   listContainer: {
     padding: 16,
     paddingBottom: 100,
   },
   taskCard: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
   },
   taskHeader: {
     flexDirection: 'row',
@@ -324,14 +319,12 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
   },
   taskActions: {
     flexDirection: 'row',
     gap: 8,
   },
   editBtn: {
-    backgroundColor: '#2196F3',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -342,7 +335,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deleteBtn: {
-    backgroundColor: '#f44336',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -382,35 +374,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   machineCard: {
-    backgroundColor: '#0f0f1e',
     borderRadius: 12,
     padding: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
   },
   machineName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
     marginBottom: 8,
   },
   taskItem: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 8,
     padding: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
   },
   taskNumber: {
     fontSize: 12,
-    color: '#FF9800',
     fontWeight: '600',
     marginBottom: 4,
   },
   shadeText: {
     fontSize: 14,
-    color: '#fff',
     marginBottom: 8,
   },
   springRow: {
@@ -423,22 +408,18 @@ const styles = StyleSheet.create({
   },
   springLabel: {
     fontSize: 12,
-    color: '#888',
     marginBottom: 4,
   },
   springValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2196F3',
   },
   springValueTotal: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FF9800',
   },
   noData: {
     fontSize: 14,
-    color: '#666',
     fontStyle: 'italic',
   },
   addButton: {
@@ -446,6 +427,39 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 16,
     right: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});
     backgroundColor: '#4CAF50',
     paddingVertical: 16,
     borderRadius: 16,

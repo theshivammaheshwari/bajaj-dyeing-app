@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -25,6 +26,7 @@ interface DyeInput {
 
 export default function AddShade() {
   const router = useRouter();
+  const { theme, colors } = useTheme();
   const [shadeNumber, setShadeNumber] = useState('');
   const [originalWeight, setOriginalWeight] = useState('');
   const [programNumber, setProgramNumber] = useState('P1');
@@ -182,17 +184,17 @@ export default function AddShade() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add New Shade</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Add New Shade</Text>
         </View>
 
         <ScrollView
@@ -201,24 +203,24 @@ export default function AddShade() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shade Information</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Shade Information</Text>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Shade Number *</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Shade Number *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
                 placeholder="e.g., 7"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textSecondary}
                 value={shadeNumber}
                 onChangeText={setShadeNumber}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Original Weight (kg) *</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Original Weight (kg) *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
                 placeholder="e.g., 6"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 value={originalWeight}
                 onChangeText={setOriginalWeight}
@@ -226,20 +228,22 @@ export default function AddShade() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Machine Program *</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Machine Program *</Text>
               <View style={styles.programButtons}>
                 {['P1', 'P2', 'P3'].map((program) => (
                   <TouchableOpacity
                     key={program}
                     style={[
                       styles.programButton,
-                      programNumber === program && styles.programButtonActive,
+                      { backgroundColor: colors.badgeBackground, borderColor: colors.border },
+                      programNumber === program && [styles.programButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
                     ]}
                     onPress={() => setProgramNumber(program)}
                   >
                     <Text
                       style={[
                         styles.programButtonText,
+                        { color: colors.textSecondary },
                         programNumber === program && styles.programButtonTextActive,
                       ]}
                     >
@@ -251,20 +255,22 @@ export default function AddShade() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>RC (Reduction Clearing) *</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>RC (Reduction Clearing) *</Text>
               <View style={styles.programButtons}>
                 {['Yes', 'No'].map((rc) => (
                   <TouchableOpacity
                     key={rc}
                     style={[
                       styles.rcButton,
-                      rcValue === rc && styles.rcButtonActive,
+                      { backgroundColor: colors.badgeBackground, borderColor: colors.border },
+                      rcValue === rc && [styles.rcButtonActive, { backgroundColor: colors.secondary, borderColor: colors.secondary }],
                     ]}
                     onPress={() => setRcValue(rc)}
                   >
                     <Text
                       style={[
                         styles.programButtonText,
+                        { color: colors.textSecondary },
                         rcValue === rc && styles.programButtonTextActive,
                       ]}
                     >
@@ -278,20 +284,20 @@ export default function AddShade() {
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dye Colors</Text>
-              <TouchableOpacity onPress={addDyeField} style={styles.addDyeButton}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Dye Colors</Text>
+              <TouchableOpacity onPress={addDyeField} style={[styles.addDyeButton, { backgroundColor: colors.primary }]}>
                 <Text style={styles.addDyeButtonText}>+ Add Dye</Text>
               </TouchableOpacity>
             </View>
 
             {dyes.map((dye, index) => (
-              <View key={dye.id} style={styles.dyeCard}>
+              <View key={dye.id} style={[styles.dyeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.dyeHeader}>
-                  <Text style={styles.dyeNumber}>Dye {index + 1}</Text>
+                  <Text style={[styles.dyeNumber, { color: colors.primary }]}>Dye {index + 1}</Text>
                   {dyes.length > 1 && (
                     <TouchableOpacity
                       onPress={() => removeDyeField(dye.id)}
-                      style={styles.removeButton}
+                      style={[styles.removeButton, { backgroundColor: colors.danger }]}
                     >
                       <Text style={styles.removeButtonText}>✕</Text>
                     </TouchableOpacity>

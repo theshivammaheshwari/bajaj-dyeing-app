@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 const MACHINES = [
@@ -40,6 +41,7 @@ const showConfirm = (title: string, message: string, onConfirm: () => void) => {
 
 export default function DyeingMaster() {
   const router = useRouter();
+  const { theme, colors, toggleTheme } = useTheme();
   const [dailyTask, setDailyTask] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -265,21 +267,21 @@ export default function DyeingMaster() {
   };
 
   const renderTaskBox = (machine: typeof MACHINES[0], task: any, index: number) => (
-    <View key={index} style={styles.taskBox}>
-      <Text style={styles.taskTitle}>Task {index + 1}</Text>
-      <Text style={styles.shadeText}>Shade #{task.shade_number}</Text>
-      <Text style={styles.springText}>Springs: {task.springs_2ply} (2PLY) + {task.springs_3ply} (3PLY)</Text>
+    <View key={index} style={[styles.taskBox, { backgroundColor: colors.background }]}>
+      <Text style={[styles.taskTitle, { color: colors.secondary }]}>Task {index + 1}</Text>
+      <Text style={[styles.shadeText, { color: colors.text }]}>Shade #{task.shade_number}</Text>
+      <Text style={[styles.springText, { color: colors.textSecondary }]}>Springs: {task.springs_2ply} (2PLY) + {task.springs_3ply} (3PLY)</Text>
       <View style={styles.weightRow}>
         <View style={styles.weightInput}>
-          <Text style={styles.label}>2PLY Weight (kg)</Text>
-          <TextInput style={styles.input} placeholder="Enter weight (e.g., 10.500)" keyboardType="decimal-pad"
+          <Text style={[styles.label, { color: colors.textSecondary }]}>2PLY Weight (kg)</Text>
+          <TextInput style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]} placeholder="Enter weight (e.g., 10.500)" keyboardType="decimal-pad"
             value={weightInputs[`${machine.id}-${index}`]?.ply2 || ''}
             onChangeText={(val) => updateLocalWeight(machine.id, index, 'ply2', val)}
             onBlur={() => saveWeight(machine.id, index, 'ply2')} />
         </View>
         <View style={styles.weightInput}>
-          <Text style={styles.label}>3PLY Weight (kg)</Text>
-          <TextInput style={styles.input} placeholder="Enter weight (e.g., 5.250)" keyboardType="decimal-pad"
+          <Text style={[styles.label, { color: colors.textSecondary }]}>3PLY Weight (kg)</Text>
+          <TextInput style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]} placeholder="Enter weight (e.g., 5.250)" keyboardType="decimal-pad"
             value={weightInputs[`${machine.id}-${index}`]?.ply3 || ''}
             onChangeText={(val) => updateLocalWeight(machine.id, index, 'ply3', val)}
             onBlur={() => saveWeight(machine.id, index, 'ply3')} />
@@ -287,15 +289,15 @@ export default function DyeingMaster() {
       </View>
       <View style={styles.buttonRow}>
         {task.status !== 'in-progress' && task.status !== 'completed' && task.status !== 'rejected' && (
-          <TouchableOpacity style={styles.startButton} onPress={() => startTask(machine.id, index)}>
+          <TouchableOpacity style={[styles.startButton, { backgroundColor: colors.primary }]} onPress={() => startTask(machine.id, index)}>
             <Text style={styles.buttonText}>Start</Text>
           </TouchableOpacity>
         )}
         {task.status === 'in-progress' && (<>
-          <TouchableOpacity style={styles.completeButton} onPress={() => completeTask(machine.id, index)}>
+          <TouchableOpacity style={[styles.completeButton, { backgroundColor: colors.secondary }]} onPress={() => completeTask(machine.id, index)}>
             <Text style={styles.buttonText}>Complete</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => rejectTask(machine.id, index)}>
+          <TouchableOpacity style={[styles.rejectButton, { backgroundColor: colors.danger }]} onPress={() => rejectTask(machine.id, index)}>
             <Text style={styles.buttonText}>Reject</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.revokeButton} onPress={() => revokeTask(machine.id, index, task.status)}>
@@ -478,77 +480,71 @@ export default function DyeingMaster() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f1e' },
+  container: { flex: 1 },
   header: { 
-    backgroundColor: '#1a1a2e', 
     padding: 16, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#333'
   },
   headerLeft: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
-  logoutButton: { backgroundColor: '#f44336', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold' },
+  headerSubtitle: { fontSize: 14, fontWeight: '600' },
+  logoutButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: '#fff', fontWeight: 'bold' },
-  dateBar: { backgroundColor: '#1a1a2e', paddingHorizontal: 16, paddingVertical: 8 },
+  dateBar: { paddingHorizontal: 16, paddingVertical: 8 },
   dateInput: { 
-    color: '#4CAF50', 
     fontSize: 16, 
     fontWeight: 'bold', 
-    backgroundColor: '#0f0f1e', 
     borderRadius: 8, 
     paddingHorizontal: 12, 
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#333'
   },
   scroll: { padding: 16 },
   emptyContainer: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#666', fontSize: 16, fontWeight: '600' },
-  machineCard: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
-  machineName: { fontSize: 18, fontWeight: 'bold', color: '#4CAF50', marginBottom: 12 },
-  noTasks: { color: '#666', fontSize: 14 },
+  emptyText: { fontSize: 16, fontWeight: '600' },
+  machineCard: { borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4 },
+  machineName: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  noTasks: { fontSize: 14 },
   statusSection: { marginBottom: 16 },
-  statusTitle: { fontSize: 15, fontWeight: '600', color: '#FF9800', marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#333' },
-  inProgressTitle: { color: '#2196F3' },
-  completedTitle: { color: '#4CAF50' },
-  rejectedTitle: { color: '#f44336' },
-  taskBox: { backgroundColor: '#0f0f1e', borderRadius: 8, padding: 12, marginBottom: 12 },
-  taskTitle: { fontSize: 14, fontWeight: '600', color: '#FF9800', marginBottom: 4 },
-  shadeText: { fontSize: 14, color: '#fff', marginBottom: 4 },
-  springText: { fontSize: 12, color: '#888', marginBottom: 12 },
+  statusTitle: { fontSize: 15, fontWeight: '600', marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1 },
+  inProgressTitle: { },
+  completedTitle: { },
+  rejectedTitle: { },
+  taskBox: { borderRadius: 8, padding: 12, marginBottom: 12 },
+  taskTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  shadeText: { fontSize: 14, marginBottom: 4 },
+  springText: { fontSize: 12, marginBottom: 12 },
   weightRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   weightInput: { flex: 1 },
-  label: { fontSize: 12, color: '#aaa', marginBottom: 6 },
-  input: { backgroundColor: '#1a1a2e', borderRadius: 8, padding: 10, color: '#fff', fontSize: 14, borderWidth: 1, borderColor: '#333' },
+  label: { fontSize: 12, marginBottom: 6 },
+  input: { borderRadius: 8, padding: 10, fontSize: 14, borderWidth: 1 },
   buttonRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  startButton: { flex: 1, backgroundColor: '#4CAF50', padding: 12, borderRadius: 8, alignItems: 'center' },
-  completeButton: { flex: 1, backgroundColor: '#2196F3', padding: 12, borderRadius: 8, alignItems: 'center' },
-  rejectButton: { flex: 1, backgroundColor: '#f44336', padding: 12, borderRadius: 8, alignItems: 'center' },
-  revokeButton: { width: 44, backgroundColor: '#FF9800', padding: 12, borderRadius: 8, alignItems: 'center' },
-  revokeButtonSmall: { backgroundColor: '#FF9800', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  startButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  completeButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  rejectButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  revokeButton: { width: 44, padding: 12, borderRadius: 8, alignItems: 'center' },
+  revokeButtonSmall: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   buttonText: { color: '#fff', fontWeight: '600' },
   completedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flex: 1 },
-  completedText: { color: '#4CAF50', fontWeight: '600', fontSize: 14 },
-  rejectedText: { color: '#f44336', fontWeight: '600', fontSize: 14 },
-  timeText: { fontSize: 11, color: '#666', marginTop: 4 },
-  loadingText: { color: '#888', fontSize: 16, textAlign: 'center', marginTop: 100 },
-  paymentCard: { backgroundColor: '#1a1a2e', borderRadius: 16, padding: 20, marginTop: 16, borderWidth: 2, borderColor: '#4CAF50' },
-  paymentTitle: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50', marginBottom: 16 },
-  paymentSection: { backgroundColor: '#0f0f1e', borderRadius: 12, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
-  rejectedSection: { borderLeftColor: '#f44336' },
-  sectionLabel: { fontSize: 16, fontWeight: 'bold', color: '#4CAF50', marginBottom: 12 },
-  sectionLabelRejected: { fontSize: 16, fontWeight: 'bold', color: '#f44336', marginBottom: 12 },
+  completedText: { fontWeight: '600', fontSize: 14 },
+  rejectedText: { fontWeight: '600', fontSize: 14 },
+  timeText: { fontSize: 11, marginTop: 4 },
+  loadingText: { fontSize: 16, textAlign: 'center', marginTop: 100 },
+  paymentCard: { borderRadius: 16, padding: 20, marginTop: 16, borderWidth: 2 },
+  paymentTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
+  paymentSection: { borderRadius: 12, padding: 16, marginBottom: 12, borderLeftWidth: 4 },
+  sectionLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
+  sectionLabelRejected: { fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  paymentLabel: { fontSize: 14, color: '#aaa' },
-  paymentValue: { fontSize: 14, color: '#fff', fontWeight: '600' },
-  totalRow: { borderTopWidth: 2, borderTopColor: '#333', paddingTop: 16, marginTop: 12 },
-  totalLabel: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  totalPayment: { fontSize: 22, fontWeight: 'bold', color: '#4CAF50' },
+  paymentLabel: { fontSize: 14 },
+  paymentValue: { fontSize: 14, fontWeight: '600' },
+  totalRow: { borderTopWidth: 2, paddingTop: 16, marginTop: 12 },
+  totalLabel: { fontSize: 18, fontWeight: 'bold' },
+  totalPayment: { fontSize: 22, fontWeight: 'bold' },
   statsRow: { flexDirection: 'row', gap: 16, marginTop: 12, justifyContent: 'center' },
-  statText: { fontSize: 13, color: '#888' },
-  rejectedStat: { fontSize: 14, color: '#f44336' },
+  statText: { fontSize: 13 },
+  rejectedStat: { fontSize: 14 },
 });

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
+import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 const MACHINE_WEIGHTS = [6, 10.5, 12, 24];
@@ -38,6 +39,7 @@ export default function Calculator() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const shadeId = params.shadeId as string;
+  const { colors, theme } = useTheme();
 
   const [shade, setShade] = useState<Shade | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<number>(6);
@@ -93,10 +95,10 @@ export default function Calculator() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
@@ -104,12 +106,12 @@ export default function Calculator() {
 
   if (!shade) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
         <View style={styles.centerContent}>
-          <Text style={styles.errorText}>Shade not found</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>Shade not found</Text>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.primary }]}
             onPress={() => router.back()}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
@@ -120,13 +122,13 @@ export default function Calculator() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backLink}>← Back</Text>
+          <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Recipe Calculator</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Recipe Calculator</Text>
       </View>
 
       <ScrollView
@@ -135,24 +137,24 @@ export default function Calculator() {
         showsVerticalScrollIndicator={false}
       >
         {/* Shade Info */}
-        <View style={styles.shadeInfoCard}>
+        <View style={[styles.shadeInfoCard, { backgroundColor: colors.card, borderColor: colors.primary }]}>
           <View style={styles.shadeHeader}>
-            <Text style={styles.shadeNumber}>Shade #{shade.shade_number}</Text>
+            <Text style={[styles.shadeNumber, { color: colors.primary }]}>Shade #{shade.shade_number}</Text>
             <View style={styles.programBadge}>
               <Text style={styles.programText}>{shade.program_number || 'P1'}</Text>
             </View>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Original Weight:</Text>
-            <Text style={styles.infoValue}>{shade.original_weight} kg</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Original Weight:</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{shade.original_weight} kg</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Number of Dyes:</Text>
-            <Text style={styles.infoValue}>{shade.dyes.length}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Number of Dyes:</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{shade.dyes.length}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>RC (Reduction Clearing):</Text>
-            <Text style={[styles.infoValue, shade.rc === 'Yes' && styles.rcYes]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>RC (Reduction Clearing):</Text>
+            <Text style={[styles.infoValue, { color: colors.text }, shade.rc === 'Yes' && styles.rcYes]}>
               {shade.rc || 'No'}
             </Text>
           </View>
@@ -160,15 +162,15 @@ export default function Calculator() {
 
         {/* Original Recipe */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Original Recipe ({shade.original_weight} kg)
           </Text>
           {shade.dyes.map((dye, index) => (
-            <View key={index} style={styles.dyeRow}>
-              <Text style={styles.dyeName}>{dye.dye_name}</Text>
+            <View key={index} style={[styles.dyeRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+              <Text style={[styles.dyeName, { color: colors.text }]}>{dye.dye_name}</Text>
               <View style={styles.dyeQuantities}>
-                <Text style={styles.dyeQuantity}>{dye.quantity.toFixed(2)} gm</Text>
-                <Text style={styles.dyePerKg}>
+                <Text style={[styles.dyeQuantity, { color: colors.primary }]}>{dye.quantity.toFixed(2)} gm</Text>
+                <Text style={[styles.dyePerKg, { color: colors.textSecondary }]}>
                   ({calculatePerKg(dye.quantity).toFixed(2)} gm/kg)
                 </Text>
               </View>
@@ -178,21 +180,23 @@ export default function Calculator() {
 
         {/* Machine Selector */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Machine</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Machine</Text>
           <View style={styles.machineButtons}>
             {MACHINE_WEIGHTS.map((weight) => (
               <TouchableOpacity
                 key={weight}
                 style={[
                   styles.machineButton,
-                  selectedMachine === weight && styles.machineButtonActive,
+                  { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                  selectedMachine === weight && [styles.machineButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
                 ]}
                 onPress={() => setSelectedMachine(weight)}
               >
                 <Text
                   style={[
                     styles.machineButtonText,
-                    selectedMachine === weight && styles.machineButtonTextActive,
+                    { color: colors.textSecondary },
+                    selectedMachine === weight && [styles.machineButtonTextActive, { color: '#fff' }],
                   ]}
                 >
                   {weight} kg
@@ -205,13 +209,13 @@ export default function Calculator() {
         {/* Scaled Recipe for Selected Machine */}
         {allMachinesData[selectedMachine] && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Scaled Recipe for {selectedMachine} kg Machine
             </Text>
             {allMachinesData[selectedMachine].map((dye, index) => (
-              <View key={index} style={styles.scaledDyeRow}>
-                <Text style={styles.scaledDyeName}>{dye.dye_name}</Text>
-                <Text style={styles.scaledDyeQuantity}>
+              <View key={index} style={[styles.scaledDyeRow, { backgroundColor: colors.card, borderLeftColor: colors.primary, borderColor: colors.border, borderWidth: 1 }]}>
+                <Text style={[styles.scaledDyeName, { color: colors.text }]}>{dye.dye_name}</Text>
+                <Text style={[styles.scaledDyeQuantity, { color: colors.primary }]}>
                   {dye.quantity.toFixed(2)} gm
                 </Text>
               </View>
@@ -221,29 +225,29 @@ export default function Calculator() {
 
         {/* All Machines Table */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>All Machines Comparison</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>All Machines Comparison</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-            <View style={styles.table}>
+            <View style={[styles.table, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               {/* Table Header */}
-              <View style={styles.tableRow}>
-                <View style={[styles.tableCell, styles.headerCell, styles.dyeNameCell]}>
-                  <Text style={styles.headerText}>Dye Name</Text>
+              <View style={[styles.tableRow, { borderBottomColor: colors.border }]}>
+                <View style={[styles.tableCell, styles.headerCell, styles.dyeNameCell, { backgroundColor: colors.inputBackground }]}>
+                  <Text style={[styles.headerText, { color: colors.text }]}>Dye Name</Text>
                 </View>
                 {MACHINE_WEIGHTS.map((weight) => (
                   <View
                     key={weight}
-                    style={[styles.tableCell, styles.headerCell, styles.machineCell]}
+                    style={[styles.tableCell, styles.headerCell, styles.machineCell, { backgroundColor: colors.inputBackground }]}
                   >
-                    <Text style={styles.headerText}>{weight} kg</Text>
+                    <Text style={[styles.headerText, { color: colors.text }]}>{weight} kg</Text>
                   </View>
                 ))}
               </View>
 
               {/* Table Rows */}
               {shade.dyes.map((dye, index) => (
-                <View key={index} style={styles.tableRow}>
+                <View key={index} style={[styles.tableRow, { borderBottomColor: colors.border }]}>
                   <View style={[styles.tableCell, styles.dyeNameCell]}>
-                    <Text style={styles.tableCellText}>{dye.dye_name}</Text>
+                    <Text style={[styles.tableCellText, { color: colors.text }]}>{dye.dye_name}</Text>
                   </View>
                   {MACHINE_WEIGHTS.map((weight) => {
                     const scaledDye = allMachinesData[weight]?.find(
@@ -255,13 +259,14 @@ export default function Calculator() {
                         style={[
                           styles.tableCell,
                           styles.machineCell,
-                          selectedMachine === weight && styles.selectedCell,
+                          selectedMachine === weight && [styles.selectedCell, { backgroundColor: colors.primary }],
                         ]}
                       >
                         <Text
                           style={[
                             styles.tableCellText,
-                            selectedMachine === weight && styles.selectedCellText,
+                            { color: colors.text },
+                            selectedMachine === weight && [styles.selectedCellText, { color: '#fff' }],
                           ]}
                         >
                           {scaledDye?.quantity.toFixed(2) || '0.00'}
@@ -282,15 +287,12 @@ export default function Calculator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   header: {
-    backgroundColor: '#1a1a2e',
     padding: 16,
     paddingTop: 8,
   },
   backLink: {
-    color: '#4CAF50',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -298,7 +300,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
   },
   scrollView: {
     flex: 1,
@@ -307,12 +308,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   shadeInfoCard: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#4CAF50',
   },
   shadeHeader: {
     flexDirection: 'row',
@@ -323,7 +322,6 @@ const styles = StyleSheet.create({
   shadeNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
     flex: 1,
   },
   programBadge: {
@@ -344,11 +342,9 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#aaa',
   },
   infoValue: {
     fontSize: 14,
-    color: '#fff',
     fontWeight: '600',
   },
   rcYes: {
@@ -361,11 +357,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 16,
   },
   dyeRow: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -375,7 +369,6 @@ const styles = StyleSheet.create({
   },
   dyeName: {
     fontSize: 16,
-    color: '#fff',
     flex: 1,
   },
   dyeQuantities: {
@@ -383,12 +376,10 @@ const styles = StyleSheet.create({
   },
   dyeQuantity: {
     fontSize: 16,
-    color: '#4CAF50',
     fontWeight: '600',
   },
   dyePerKg: {
     fontSize: 12,
-    color: '#888',
     marginTop: 4,
   },
   machineButtons: {
@@ -399,28 +390,21 @@ const styles = StyleSheet.create({
   machineButton: {
     flex: 1,
     minWidth: 70,
-    backgroundColor: '#1a1a2e',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#333',
   },
   machineButtonActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
   },
   machineButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#888',
   },
   machineButtonTextActive: {
-    color: '#fff',
   },
   scaledDyeRow: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -428,27 +412,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
   },
   scaledDyeName: {
     fontSize: 16,
-    color: '#fff',
     flex: 1,
   },
   scaledDyeQuantity: {
     fontSize: 18,
-    color: '#4CAF50',
     fontWeight: 'bold',
   },
   table: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     overflow: 'hidden',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   tableCell: {
     padding: 12,
@@ -456,7 +435,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerCell: {
-    backgroundColor: '#2a2a3e',
   },
   dyeNameCell: {
     width: 140,
@@ -466,19 +444,15 @@ const styles = StyleSheet.create({
     width: 80,
   },
   selectedCell: {
-    backgroundColor: '#4CAF50',
   },
   headerText: {
-    color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
   },
   tableCellText: {
-    color: '#fff',
     fontSize: 14,
   },
   selectedCellText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   centerContent: {
@@ -488,16 +462,13 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   loadingText: {
-    color: '#888',
     fontSize: 16,
   },
   errorText: {
-    color: '#f44336',
     fontSize: 18,
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#4CAF50',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
