@@ -461,13 +461,3 @@ const styles = StyleSheet.create({
   },
 });
 
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    color: '#666',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});

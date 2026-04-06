@@ -234,7 +234,7 @@ export default function Index() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.quickActionButton, { backgroundColor: '#FF9800' }]}
+          style={[styles.quickActionButton, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/dyeing-master')}
         >
           <Text style={styles.quickActionIcon}>👨‍🏭</Text>
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rcBadge: {
-    backgroundColor: '#9C27B0',
+    backgroundColor: '#8E24AA',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   programBadge: {
-    backgroundColor: '#FF9800',
+    backgroundColor: '#FB8C00',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,

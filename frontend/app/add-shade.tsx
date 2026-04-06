@@ -185,12 +185,12 @@ export default function AddShade() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
@@ -207,7 +207,7 @@ export default function AddShade() {
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Shade Number *</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 placeholder="e.g., 7"
                 placeholderTextColor={colors.textSecondary}
                 value={shadeNumber}
@@ -218,7 +218,7 @@ export default function AddShade() {
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Original Weight (kg) *</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 placeholder="e.g., 6"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
@@ -305,11 +305,11 @@ export default function AddShade() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Dye Name *</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Dye Name *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                     placeholder="e.g., Yellow Brown"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={colors.textSecondary}
                     value={dye.dye_name}
                     onChangeText={(value) => handleDyeNameChange(dye.id, value)}
                     onFocus={() => {
@@ -331,7 +331,7 @@ export default function AddShade() {
                     }}
                   />
                   {activeSuggestionId === dye.id && filteredSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
+                    <View style={[styles.suggestionsContainer, { backgroundColor: colors.card, borderColor: colors.primary }]}>
                       <ScrollView 
                         style={styles.suggestionsList} 
                         nestedScrollEnabled={true}
@@ -340,10 +340,10 @@ export default function AddShade() {
                         {filteredSuggestions.slice(0, 5).map((suggestion, idx) => (
                           <TouchableOpacity
                             key={idx}
-                            style={styles.suggestionItem}
+                            style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
                             onPress={() => selectSuggestion(dye.id, suggestion)}
                           >
-                            <Text style={styles.suggestionText}>{suggestion}</Text>
+                            <Text style={[styles.suggestionText, { color: colors.text }]}>{suggestion}</Text>
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
@@ -352,11 +352,11 @@ export default function AddShade() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Quantity (grams) *</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Quantity (grams) *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                     placeholder="e.g., 41.93"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="decimal-pad"
                     value={dye.quantity}
                     onChangeText={(value) => updateDye(dye.id, 'quantity', value)}
@@ -367,9 +367,9 @@ export default function AddShade() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.headerBackground, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton, { backgroundColor: colors.primary }, loading && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={loading}
           >
@@ -386,13 +386,11 @@ export default function AddShade() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1e',
   },
   keyboardView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#1a1a2e',
     padding: 16,
     paddingTop: 8,
   },
@@ -401,14 +399,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backButtonText: {
-    color: '#4CAF50',
     fontSize: 16,
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
   },
   scrollView: {
     flex: 1,
@@ -429,7 +425,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 16,
   },
   inputGroup: {
@@ -437,26 +432,20 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#aaa',
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     padding: 14,
-    color: '#fff',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#333',
   },
   suggestionsContainer: {
     position: 'relative',
-    backgroundColor: '#2a2a3e',
     borderRadius: 8,
     marginTop: 4,
     borderWidth: 1,
-    borderColor: '#4CAF50',
     maxHeight: 150,
     overflow: 'hidden',
   },
@@ -466,19 +455,15 @@ const styles = StyleSheet.create({
   suggestionItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   suggestionText: {
-    color: '#fff',
     fontSize: 15,
   },
   dyeCard: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
   },
   dyeHeader: {
     flexDirection: 'row',
@@ -489,13 +474,11 @@ const styles = StyleSheet.create({
   dyeNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50',
   },
   removeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#f44336',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -505,7 +488,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addDyeButton: {
-    backgroundColor: '#2196F3',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -521,50 +503,38 @@ const styles = StyleSheet.create({
   },
   programButton: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#333',
   },
   programButtonActive: {
-    backgroundColor: '#FF9800',
-    borderColor: '#FF9800',
   },
   programButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#888',
   },
   programButtonTextActive: {
     color: '#fff',
   },
   rcButton: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#333',
   },
   rcButtonActive: {
-    backgroundColor: '#9C27B0',
-    borderColor: '#9C27B0',
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1a1a2e',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#2a2a3e',
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
