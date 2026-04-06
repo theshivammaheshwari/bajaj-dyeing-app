@@ -803,21 +803,6 @@ const styles = StyleSheet.create({
   },
 });
 
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  machineWeightText: {
-    fontSize: 10,
-  },
-  machineCountText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  gridCell: {
-    width: 90,
-    minHeight: 110,
     borderRadius: 12,
     marginHorizontal: 4,
     padding: 6,
