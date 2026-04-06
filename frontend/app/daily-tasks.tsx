@@ -460,24 +460,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-  addButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  loadingText: {
-    color: '#888',
-    fontSize: 16,
-  },
-  emptyText: {
-    color: '#888',
-    fontSize: 18,
+
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
