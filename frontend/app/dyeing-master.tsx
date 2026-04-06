@@ -420,7 +420,7 @@ export default function DyeingMaster() {
         horizontal={true}
         showsHorizontalScrollIndicator={true}
       >
-        <View>
+        <View style={styles.gridContainer}>
           {/* Top Row: Machine Info Cards */}
           <View style={styles.gridRow}>
             <View style={styles.rowNumberCell}>
@@ -434,8 +434,10 @@ export default function DyeingMaster() {
               return (
                 <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
                   <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
-                  <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
-                  <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                  <View style={styles.machineStats}>
+                    <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
+                    <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                  </View>
                 </View>
               );
             })}
@@ -548,22 +550,21 @@ export default function DyeingMaster() {
                                 )}
                                 {(task.status === 'completed' || task.status === 'rejected') && (
                                   <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]} onPress={() => revokeTask(machine.id, rowIndex, task.status)}>
-                                    <Text style={styles.actionButtonText}>Reset Task</Text>
+                                    <Text style={styles.actionButtonText}>Reset</Text>
                                   </TouchableOpacity>
                                 )}
                               </View>
                             </View>
                           ) : (
-                            <View style={styles.cellSummary}>
-                              <Text style={[styles.plyCountText, { color: colors.textSecondary }]}>
-                                {task.springs_2ply || 0}P + {task.springs_3ply || 0}P
-                              </Text>
-                              {(task.ply2_weight > 0 || task.ply3_weight > 0) && (
-                                <Text style={[styles.weightSumText, { color: colors.text }]}>
-                                  {(task.ply2_weight || 0 + task.ply3_weight || 0).toFixed(2)} kg
-                                </Text>
-                              )}
-                            </View>
+                            <TouchableOpacity 
+                              style={styles.cellSummary}
+                              onPress={() => setActiveTask({ machineId: machine.id, taskIndex: rowIndex })}
+                            >
+                              <View style={styles.summaryWeights}>
+                                <Text style={[styles.summaryWeightText, { color: colors.text }]}>W: {(parseFloat(task.ply2_weight || 0) + parseFloat(task.ply3_weight || 0)).toFixed(2)}kg</Text>
+                                <Text style={[styles.summarySpringText, { color: colors.textSecondary }]}>S: {task.springs_2ply + task.springs_3ply}</Text>
+                              </View>
+                            </TouchableOpacity>
                           )}
                         </>
                       ) : (
@@ -605,87 +606,261 @@ export default function DyeingMaster() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { 
-    padding: 16, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  container: {
+    flex: 1,
+  },
+  header: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+  },
+  themeToggle: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  logoutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  dateBar: {
+    padding: 12,
+  },
+  dateInputContainer: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'center',
+  },
+  dateInput: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingVertical: 6,
+    textAlign: 'center',
+  },
+  scroll: {
+    paddingBottom: 20,
+  },
+  gridContainer: {
+    paddingHorizontal: 8,
+    paddingTop: 12,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  rowNumberCell: {
+    width: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  headerLeft: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
-  headerSubtitle: { fontSize: 14, fontWeight: '600' },
-  themeToggle: { padding: 8, borderRadius: 12 },
-  logoutButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-  logoutText: { color: '#fff', fontWeight: 'bold' },
-  dateBar: { padding: 12 },
-  dateInputContainer: { 
-    borderRadius: 8, 
-    borderWidth: 1, 
-    paddingHorizontal: 12,
+  rowNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
-  dateInput: { 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    paddingVertical: 6,
-  },
-  scroll: { padding: 12, paddingBottom: 100 },
-  gridRow: { flexDirection: 'row', marginBottom: 8 },
-  rowNumberCell: { width: 30, justifyContent: 'center', alignItems: 'center' },
-  rowNumberText: { fontWeight: 'bold', fontSize: 12 },
   machineInfoCard: {
-    width: 90, height: 90, borderRadius: 12, marginHorizontal: 4, 
-    padding: 8, justifyContent: 'center', alignItems: 'center'
+    width: 180,
+    marginHorizontal: 4,
+    padding: 12,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  machineNameText: { fontWeight: 'bold', fontSize: 18 },
-  machineWeightText: { fontSize: 10 },
-  machineCountText: { fontWeight: '600', fontSize: 14, marginTop: 4 },
+  machineNameText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#fff',
+  },
+  machineStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  machineWeightText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  machineCountText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   gridCell: {
-    width: 90, minHeight: 120, borderRadius: 12, marginHorizontal: 4, 
-    padding: 6, borderWidth: 1, justifyContent: 'center'
+    width: 180,
+    minHeight: 120,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    position: 'relative',
   },
-  activeGridCell: { zIndex: 10, elevation: 5 },
-  cellHeader: { 
-    flexDirection: 'row', justifyContent: 'space-between', 
-    alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)',
-    paddingBottom: 4, marginBottom: 4 
+  activeGridCell: {
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
-  cellShadeText: { fontSize: 13, fontWeight: 'bold' },
-  statusIndicator: { fontSize: 14, fontWeight: 'bold' },
-  inlineEditor: { flex: 1, justifyContent: 'space-between' },
-  weightInputsContainer: { gap: 4, marginBottom: 6 },
-  weightInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  weightLabel: { fontSize: 9, fontWeight: 'bold', width: 30 },
-  smallInput: { 
-    flex: 1, borderRadius: 4, borderWidth: 1, padding: 2, 
-    fontSize: 10, textAlign: 'center' 
+  cellHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingBottom: 6,
+    marginBottom: 8,
   },
-  actionButtons: { marginTop: 2 },
-  progressActions: { flexDirection: 'row', gap: 2 },
-  smallActionButton: { 
-    paddingVertical: 6, borderRadius: 4, alignItems: 'center', 
-    justifyContent: 'center', flex: 1 
+  cellShadeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  actionButtonText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  cellSummary: { alignItems: 'center', gap: 2 },
-  plyCountText: { fontSize: 10, fontWeight: '600' },
-  weightSumText: { fontSize: 12, fontWeight: 'bold' },
-  emptyCellText: { textAlign: 'center', fontSize: 20 },
-  emptyContainer: { padding: 40, width: 480, alignItems: 'center' },
-  emptyText: { fontSize: 16, fontWeight: '600' },
-  completedCell: {},
-  rejectedCell: {},
-  progressCell: {},
-  paymentCard: { 
-    marginTop: 24, marginHorizontal: 4, borderRadius: 16, 
-    padding: 16, borderWidth: 1, width: 470 
+  statusToggle: {
+    padding: 4,
   },
-  paymentTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
-  paymentFlex: { flexDirection: 'row', justifyContent: 'space-between' },
-  paymentStat: { flex: 1, alignItems: 'center' },
-  statLabel: { fontSize: 12, marginBottom: 4 },
-  statValue: { fontSize: 16, fontWeight: 'bold' },
-  statValueTotal: { fontSize: 18, fontWeight: 'bold' },
-  statSub: { fontSize: 10, marginTop: 2 },
-  loadingText: { fontSize: 16, textAlign: 'center', marginTop: 100 },
+  statusIndicator: {
+    fontSize: 18,
+  },
+  inlineEditor: {
+    flex: 1,
+  },
+  weightInputsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  weightInputWrap: {
+    flex: 0.48,
+  },
+  weightLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  smallInput: {
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    borderWidth: 1,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  progressActions: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  smallActionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  cellSummary: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  summaryWeights: {
+    alignItems: 'center',
+  },
+  summaryWeightText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  summarySpringText: {
+    fontSize: 12,
+  },
+  emptyCellText: {
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  paymentCard: {
+    marginTop: 24,
+    marginHorizontal: 8,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    width: 920, // To match roughly 5 columns + padding
+  },
+  paymentTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  paymentFlex: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  paymentStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  statValueTotal: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  statSub: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  loadingText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 100,
+  },
+  completedCell: {
+    opacity: 0.9,
+  },
+  rejectedCell: {
+    opacity: 0.9,
+  },
+  progressCell: {
+    opacity: 1,
+  },
 });
