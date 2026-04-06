@@ -476,21 +476,26 @@ export default function DyeingMaster() {
                         <>
                           <TouchableOpacity 
                             style={styles.cellHeader} 
-                            onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
+                            onPress={() => router.push(`/shade-detail?shadeId=${task.shade_id}`)}
                           >
                             <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                               #{task.shade_number}
                             </Text>
-                            <Text style={[styles.statusIndicator, { 
-                              color: task.status === 'completed' ? colors.success : 
-                                     task.status === 'rejected' ? colors.danger : 
-                                     task.status === 'in-progress' ? colors.secondary : 
-                                     colors.textSecondary 
-                            }]}>
-                              {task.status === 'completed' ? '✓' : 
-                               task.status === 'rejected' ? '✕' : 
-                               task.status === 'in-progress' ? '●' : '○'}
-                            </Text>
+                            <TouchableOpacity 
+                              onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
+                              style={styles.statusToggle}
+                            >
+                              <Text style={[styles.statusIndicator, { 
+                                color: task.status === 'completed' ? colors.success : 
+                                       task.status === 'rejected' ? colors.danger : 
+                                       task.status === 'in-progress' ? colors.secondary : 
+                                       colors.textSecondary 
+                              }]}>
+                                {task.status === 'completed' ? '✓' : 
+                                 task.status === 'rejected' ? '✕' : 
+                                 task.status === 'in-progress' ? '●' : '○'}
+                              </Text>
+                            </TouchableOpacity>
                           </TouchableOpacity>
 
                           {isActive ? (

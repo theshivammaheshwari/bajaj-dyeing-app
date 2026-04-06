@@ -24,6 +24,14 @@ export default function Root({ children }: PropsWithChildren) {
               body > div:first-child { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
               [role="heading"], [role="heading"] * { overflow: visible !important; }
+
+              @media print {
+                .no-print { display: none !important; }
+                .only-print { display: block !important; }
+                body { overflow: visible !important; height: auto !important; }
+                #root, body > div:first-child { position: static !important; }
+                .print-card { border-width: 1px !important; border-color: #000 !important; }
+              }
             `,
           }}
         />

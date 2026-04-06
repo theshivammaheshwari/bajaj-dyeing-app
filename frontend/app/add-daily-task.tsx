@@ -388,7 +388,13 @@ export default function AddDailyTask() {
                         <>
                           <TouchableOpacity 
                             style={styles.cellHeader} 
-                            onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id })}
+                            onPress={() => {
+                              if (task.shadeId) {
+                                router.push(`/shade-detail?shadeId=${task.shadeId}`);
+                              } else {
+                                setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
+                              }
+                            }}
                           >
                             <Text style={[styles.cellShadeText, { color: colors.textSecondary }, task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null]}>
                               {task.shadeNumber ? `#${task.shadeNumber}` : 'Shade'}
@@ -397,19 +403,29 @@ export default function AddDailyTask() {
 
                           {isActive ? (
                             <View style={[styles.inlineEditor, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-                              <TextInput
-                                style={[styles.inlineShadeInput, { color: colors.text, borderBottomColor: colors.border }]}
-                                placeholder="Shade..."
-                                placeholderTextColor={colors.textSecondary}
-                                value={task.shadeSearchText}
-                                onChangeText={(value) => {
-                                  updateTask(machine.id, task.id, 'shadeSearchText', value);
-                                  updateTask(machine.id, task.id, 'showShadeDropdown', true);
-                                }}
-                                onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
-                                keyboardType="number-pad"
-                                autoFocus
-                              />
+                              <View style={[styles.inlineHeaderActions, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }]}>
+                                <TextInput
+                                  style={[styles.inlineShadeInput, { color: colors.text, borderBottomColor: colors.border, flex: 1 }]}
+                                  placeholder="Shade..."
+                                  placeholderTextColor={colors.textSecondary}
+                                  value={task.shadeSearchText}
+                                  onChangeText={(value) => {
+                                    updateTask(machine.id, task.id, 'shadeSearchText', value);
+                                    updateTask(machine.id, task.id, 'showShadeDropdown', true);
+                                  }}
+                                  onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
+                                  keyboardType="number-pad"
+                                  autoFocus
+                                />
+                                {task.shadeId && (
+                                  <TouchableOpacity 
+                                    onPress={() => router.push(`/shade-detail?shadeId=${task.shadeId}`)}
+                                    style={{ marginLeft: 4, padding: 2 }}
+                                  >
+                                    <Text style={{ fontSize: 16 }}>👁️</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
                               
                               {task.showShadeDropdown && (
                                 <View style={[styles.inlineDropdown, { backgroundColor: colors.card, borderColor: colors.primary }]}>
