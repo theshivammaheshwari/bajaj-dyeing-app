@@ -42,7 +42,7 @@ interface MachineTaskData {
 
 export default function EditDailyTask() {
   const router = useRouter();
-  const { taskId } = useLocalSearchParams();
+  const { taskId } = useLocalSearchParams(); // This is the MongoDB ID string
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,31 +68,31 @@ export default function EditDailyTask() {
   const fetchExistingTask = async () => {
     try {
       setLoading(true);
-      const url = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/id/${taskId}`;
-      console.log('Fetching task from:', url);
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log('Task data received:', data);
+      // We need to find which date this taskId belongs to or fetch all and find the ID
+      // But the backend usually has a route for all or by date. 
+      // Let's try fetching all daily tasks and finding our taskId
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`);
+      const allTasks = await response.json();
+      
+      const data = allTasks.find((t: any) => t.id === taskId);
 
       if (data) {
         setDate(data.date);
         const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
         
         MACHINES.forEach(m => {
-          // The API returns machine data as an array of tasks under the machine ID key (m1, m2, etc.)
           const apiTasks = data[m.id] || [];
           
           newMachineTasks[m.id] = apiTasks.map((t: any, idx: number) => ({
-            id: t.id || `${m.id}-${idx}`, // Use the real ID from database if available
+            id: `${m.id}-${idx}`, // Using position-based ID for grid state
             shadeId: t.shade_id || '',
-            shadeNumber: String(t.shade_number || ''),
-            springs2ply: String(t.springs_2ply || '0'),
-            springs3ply: String(t.springs_3ply || '0'),
+            shadeNumber: t.shade_number ? String(t.shade_number) : '',
+            springs2ply: t.springs_2ply !== undefined ? String(t.springs_2ply) : '0',
+            springs3ply: t.springs_3ply !== undefined ? String(t.springs_3ply) : '0',
             showShadeDropdown: false,
-            shadeSearchText: String(t.shade_number || '')
+            shadeSearchText: t.shade_number ? String(t.shade_number) : ''
           }));
 
-          // Pad with empty rows to maintain grid layout (at least 5 rows)
           while (newMachineTasks[m.id].length < 5) {
             newMachineTasks[m.id].push({
               id: `${m.id}-${newMachineTasks[m.id].length}`,
@@ -170,9 +170,7 @@ export default function EditDailyTask() {
     let hasData = false;
 
     for (const machine of MACHINES) {
-      // Filter tasks that have at least a shade selected
       const tasks = machineTasks[machine.id].filter(t => t.shadeId !== '');
-      
       const totalSprings = tasks.reduce((sum, t) => sum + (parseInt(t.springs2ply) || 0) + (parseInt(t.springs3ply) || 0), 0);
       
       if (totalSprings > machine.totalSprings) {
@@ -181,8 +179,7 @@ export default function EditDailyTask() {
       }
 
       if (tasks.length > 0) {
-        payload[machine.id] = tasks.map((t, idx) => ({
-          id: t.id && !t.id.includes('-') ? t.id : undefined, // ONLY include ID if it is a real database ID (not our m1-0 temp string)
+        payload[machine.id] = tasks.map(t => ({
           shade_id: t.shadeId,
           shade_number: t.shadeNumber,
           springs_2ply: parseInt(t.springs2ply) || 0,
@@ -190,6 +187,8 @@ export default function EditDailyTask() {
           weight: machine.capacity,
         }));
         hasData = true;
+      } else {
+        payload[machine.id] = [];
       }
     }
 
@@ -197,14 +196,24 @@ export default function EditDailyTask() {
 
     setLoading(true);
     try {
-      const method = taskId ? 'PUT' : 'POST';
-      const url = taskId ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${taskId}` : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
+      const url = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${taskId}`;
       const response = await fetch(url, {
-        method, headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (response.ok) Alert.alert('Success', 'Updated!', () => router.back());
-    } catch (e) { Alert.alert('Error', 'Failed'); } finally { setLoading(false); }
+
+      if (response.ok) {
+        Alert.alert('Success', 'Updated!', () => router.back());
+      } else {
+        const err = await response.json();
+        Alert.alert('Error', `Update failed: ${err.detail || 'Unknown error'}`);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -215,7 +224,7 @@ export default function EditDailyTask() {
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.backButtonText}>← Back</Text></TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Task</Text>
           <View style={styles.dateInputContainer}>
-            <TextInput style={styles.dateInput} value={date} onChangeText={setDate} />
+            <TextInput style={styles.dateInput} value={date} onChangeText={setDate} editable={false} />
           </View>
         </View>
 
