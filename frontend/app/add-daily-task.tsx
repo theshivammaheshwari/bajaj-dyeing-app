@@ -316,88 +316,95 @@ export default function AddDailyTask() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
-
-          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <TextInput
-              style={[styles.dateInput, { color: colors.primary }]}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-        </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          horizontal={true}
+        <ScrollView 
+          style={styles.verticalScrollView} 
+          contentContainerStyle={styles.verticalScrollContent}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.gridContainer}>
-            {/* Top Row: Machine Cards */}
-            <View style={styles.gridRow}>
-              <View style={styles.rowNumberCell}>
-                <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
-              </View>
-              {MACHINES.map(machine => {
-                const tasks = machineTasks[machine.id];
-                const totalSpringsUsed = tasks.reduce((sum, task) => 
-                  sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0), 0
-                );
-                return (
-                  <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
-                    <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
-                    <View style={styles.machineStats}>
-                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
-                      <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
+          <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
 
-            {/* Task Grid Rows */}
-            {Array.from({ length: machineTasks.m1.length }).map((_, rowIndex) => (
-              <View key={rowIndex} style={[styles.gridRow, { zIndex: machineTasks.m1.length - rowIndex }]}>
+            <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.dateInput, { color: colors.primary }]}
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+          </View>
+
+          <ScrollView
+            style={styles.horizontalScrollView}
+            contentContainerStyle={styles.horizontalScrollContent}
+            showsHorizontalScrollIndicator={true}
+            horizontal={true}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.gridContainer}>
+              {/* Top Row: Machine Cards */}
+              <View style={styles.gridRow}>
                 <View style={styles.rowNumberCell}>
-                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
+                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
                 </View>
                 {MACHINES.map(machine => {
-                  const task = machineTasks[machine.id][rowIndex];
-                  const isActive = activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
-
+                  const tasks = machineTasks[machine.id];
+                  const totalSpringsUsed = tasks.reduce((sum, task) => 
+                    sum + (parseInt(task.springs2ply) || 0) + (parseInt(task.springs3ply) || 0), 0
+                  );
                   return (
-                    <View 
-                      key={machine.id} 
-                      style={[
-                        styles.gridCell, 
-                        { backgroundColor: colors.card, borderColor: colors.border },
-                        isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
-                        task?.shadeId ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] : null,
-                        { zIndex: isActive ? 100 : 1 }
-                      ]}
-                    >
-                      {task ? (
-                        <>
-                          <TouchableOpacity 
-                            style={styles.cellHeader} 
-                            onPress={() => {
-                              if (task.shadeId && !isActive) {
-                                router.push(`/shade-detail?shadeId=${task.shadeId}`);
-                              } else {
-                                setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
-                              }
-                            }}
-                          >
+                    <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
+                      <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
+                      <View style={styles.machineStats}>
+                        <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
+                        <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Task Grid Rows */}
+              {Array.from({ length: machineTasks.m1.length }).map((_, rowIndex) => (
+                <View key={rowIndex} style={[styles.gridRow, { zIndex: machineTasks.m1.length - rowIndex }]}>
+                  <View style={styles.rowNumberCell}>
+                    <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
+                  </View>
+                  {MACHINES.map(machine => {
+                    const task = machineTasks[machine.id][rowIndex];
+                    const isActive = activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
+
+                    return (
+                      <View 
+                        key={machine.id} 
+                        style={[
+                          styles.gridCell, 
+                          { backgroundColor: colors.card, borderColor: colors.border },
+                          isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
+                          task?.shadeId ? [styles.filledGridCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] : null,
+                          { zIndex: isActive ? 100 : 1 }
+                        ]}
+                      >
+                        {task ? (
+                          <>
+                            <TouchableOpacity 
+                              style={styles.cellHeader} 
+                              onPress={() => {
+                                if (task.shadeId && !isActive) {
+                                  router.push(`/shade-detail?shadeId=${task.shadeId}`);
+                                } else {
+                                  setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
+                                }
+                              }}
+                            >
                             <Text 
                               numberOfLines={1}
                               style={[
@@ -538,10 +545,10 @@ export default function AddDailyTask() {
             <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save All Tasks'}</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -580,15 +587,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  scrollView: {
+  verticalScrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 100,
+  verticalScrollContent: {
+    flexGrow: 1,
+  },
+  horizontalScrollView: {
+    flex: 1,
+  },
+  horizontalScrollContent: {
+    flexGrow: 1,
   },
   gridContainer: {
     paddingHorizontal: 8,
     paddingTop: 12,
+    paddingBottom: 20,
   },
   gridRow: {
     flexDirection: 'row',

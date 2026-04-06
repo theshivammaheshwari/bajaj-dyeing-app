@@ -388,116 +388,122 @@ export default function DyeingMaster() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
-      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
-            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-          <TextInput
-            style={[styles.dateInput, { color: colors.primary }]}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
-      </View>
-
-      <ScrollView 
-        contentContainerStyle={styles.scroll} 
-        horizontal={true}
-        showsHorizontalScrollIndicator={true}
+      <ScrollView
+        style={styles.verticalScrollView}
+        contentContainerStyle={styles.verticalScrollContent}
+        showsVerticalScrollIndicator={true}
       >
-        <View style={styles.gridContainer}>
-          {/* Top Row: Machine Info Cards */}
-          <View style={styles.gridRow}>
-            <View style={styles.rowNumberCell}>
-              <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
-            </View>
-            {MACHINES.map(machine => {
-              const tasks = dailyTask?.[machine.id] || [];
-              const totalSpringsUsed = tasks.reduce((sum: number, task: any) => 
-                sum + (task.springs_2ply || 0) + (task.springs_3ply || 0), 0
-              );
-              return (
-                <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
-                  <View style={styles.machineStats}>
-                    <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
-                    <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
-                  </View>
-                </View>
-              );
-            })}
+        <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
           </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
+              <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.dateInput, { color: colors.primary }]}
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+        </View>
 
-          {/* Task Grid Rows */}
-          {!dailyTask && !loading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks found for {date}</Text>
+        <ScrollView 
+          style={styles.horizontalScrollView}
+          contentContainerStyle={styles.horizontalScrollContent} 
+          horizontal={true}
+          showsHorizontalScrollIndicator={true}
+        >
+          <View style={styles.gridContainer}>
+            {/* Top Row: Machine Info Cards */}
+            <View style={styles.gridRow}>
+              <View style={styles.rowNumberCell}>
+                <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
+              </View>
+              {MACHINES.map(machine => {
+                const tasks = dailyTask?.[machine.id] || [];
+                const totalSpringsUsed = tasks.reduce((sum: number, task: any) => 
+                  sum + (task.springs_2ply || 0) + (task.springs_3ply || 0), 0
+                );
+                return (
+                  <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
+                    <View style={styles.machineStats}>
+                      <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
+                      <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-          ) : (
-            Array.from({ length: 5 }).map((_, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
-                <View style={styles.rowNumberCell}>
-                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
-                </View>
-                {MACHINES.map(machine => {
-                  const tasks = dailyTask?.[machine.id] || [];
-                  const task = tasks[rowIndex];
-                  const isActive = activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
 
-                  return (
-                    <View 
-                      key={machine.id} 
-                      style={[
-                        styles.gridCell, 
-                        { backgroundColor: colors.card, borderColor: colors.border },
-                        isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
-                        task ? (
-                          task.status === 'completed' ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] :
-                          task.status === 'rejected' ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }] :
-                          task.status === 'in-progress' ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }] :
-                          null
-                        ) : null
-                      ]}
-                    >
-                      {task ? (
-                        <>
-                          <TouchableOpacity 
-                            style={styles.cellHeader} 
-                            onPress={() => router.push(`/shade-detail?shadeId=${task.shade_id}`)}
-                          >
-                            <Text style={[styles.cellShadeText, { color: colors.primary }]}>
-                              #{task.shade_number}
-                            </Text>
+            {/* Task Grid Rows */}
+            {!dailyTask && !loading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks found for {date}</Text>
+              </View>
+            ) : (
+              Array.from({ length: 5 }).map((_, rowIndex) => (
+                <View key={rowIndex} style={styles.gridRow}>
+                  <View style={styles.rowNumberCell}>
+                    <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
+                  </View>
+                  {MACHINES.map(machine => {
+                    const tasks = dailyTask?.[machine.id] || [];
+                    const task = tasks[rowIndex];
+                    const isActive = activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
+
+                    return (
+                      <View 
+                        key={machine.id} 
+                        style={[
+                          styles.gridCell, 
+                          { backgroundColor: colors.card, borderColor: colors.border },
+                          isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
+                          task ? (
+                            task.status === 'completed' ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] :
+                            task.status === 'rejected' ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }] :
+                            task.status === 'in-progress' ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }] :
+                            null
+                          ) : null
+                        ]}
+                      >
+                        {task ? (
+                          <>
                             <TouchableOpacity 
-                              onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
-                              style={styles.statusToggle}
+                              style={styles.cellHeader} 
+                              onPress={() => router.push(`/shade-detail?shadeId=${task.shade_id}`)}
                             >
-                              <Text style={[styles.statusIndicator, { 
-                                color: task.status === 'completed' ? colors.success : 
-                                       task.status === 'rejected' ? colors.danger : 
-                                       task.status === 'in-progress' ? colors.secondary : 
-                                       colors.textSecondary 
-                              }]}>
-                                {task.status === 'completed' ? '✓' : 
-                                 task.status === 'rejected' ? '✕' : 
-                                 task.status === 'in-progress' ? '●' : '○'}
+                              <Text style={[styles.cellShadeText, { color: colors.primary }]}>
+                                #{task.shade_number}
                               </Text>
-                            </TouchableOpacity>
+                              <TouchableOpacity 
+                                onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
+                                style={styles.statusToggle}
+                              >
+                                <Text style={[styles.statusIndicator, { 
+                                  color: task.status === 'completed' ? colors.success : 
+                                         task.status === 'rejected' ? colors.danger : 
+                                         task.status === 'in-progress' ? colors.secondary : 
+                                         colors.textSecondary 
+                                }]}>
+                                  {task.status === 'completed' ? '✓' : 
+                                   task.status === 'rejected' ? '✕' : 
+                                   task.status === 'in-progress' ? '●' : '○'}
+                                </Text>
+                              </TouchableOpacity>
                           </TouchableOpacity>
 
                           {isActive ? (
@@ -601,9 +607,9 @@ export default function DyeingMaster() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
-  );
-}
+    </ScrollView>
+  </SafeAreaView>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -653,12 +659,22 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     textAlign: 'center',
   },
-  scroll: {
+  verticalScrollView: {
+    flex: 1,
+  },
+  verticalScrollContent: {
+    flexGrow: 1,
+  },
+  horizontalScrollView: {
+    flex: 1,
+  },
+  horizontalScrollContent: {
     paddingBottom: 20,
   },
   gridContainer: {
     paddingHorizontal: 8,
     paddingTop: 12,
+    paddingBottom: 40,
   },
   gridRow: {
     flexDirection: 'row',
