@@ -270,6 +270,9 @@ export default function DyeingMaster() {
 
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Text style={[styles.backBtnText, { color: colors.primary }]}>← Back</Text>
+          </TouchableOpacity>
           <Image
             source={require('../assets/images/logo.png')}
             style={styles.headerLogo}
@@ -547,7 +550,15 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+  },
+  backBtn: {
+    paddingVertical: 6,
+    paddingRight: 4,
+  },
+  backBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   headerLogo: {
     width: 38,

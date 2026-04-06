@@ -167,7 +167,9 @@ export default function Calculator() {
           </Text>
           {shade.dyes.map((dye, index) => (
             <View key={index} style={[styles.dyeRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <Text style={[styles.dyeName, { color: colors.text }]}>{dye.dye_name}</Text>
+              <View style={[styles.dyeNameBadge, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[styles.dyeName, { color: colors.primary }]}>{dye.dye_name}</Text>
+              </View>
               <View style={styles.dyeQuantities}>
                 <Text style={[styles.dyeQuantity, { color: colors.primary }]}>{dye.quantity.toFixed(2)} gm</Text>
                 <Text style={[styles.dyePerKg, { color: colors.textSecondary }]}>
@@ -214,7 +216,9 @@ export default function Calculator() {
             </Text>
             {allMachinesData[selectedMachine].map((dye, index) => (
               <View key={index} style={[styles.scaledDyeRow, { backgroundColor: colors.card, borderLeftColor: colors.primary, borderColor: colors.border, borderWidth: 1 }]}>
-                <Text style={[styles.scaledDyeName, { color: colors.text }]}>{dye.dye_name}</Text>
+                <View style={[styles.dyeNameBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.scaledDyeName, { color: colors.primary }]}>{dye.dye_name}</Text>
+                </View>
                 <Text style={[styles.scaledDyeQuantity, { color: colors.primary }]}>
                   {dye.quantity.toFixed(2)} gm
                 </Text>
@@ -247,7 +251,9 @@ export default function Calculator() {
               {shade.dyes.map((dye, index) => (
                 <View key={index} style={[styles.tableRow, { borderBottomColor: colors.border }]}>
                   <View style={[styles.tableCell, styles.dyeNameCell]}>
-                    <Text style={[styles.tableCellText, { color: colors.text }]}>{dye.dye_name}</Text>
+                    <View style={[styles.dyeNameBadgeSmall, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.tableCellText, { color: colors.primary, fontWeight: '600' }]}>{dye.dye_name}</Text>
+                    </View>
                   </View>
                   {MACHINE_WEIGHTS.map((weight) => {
                     const scaledDye = allMachinesData[weight]?.find(
@@ -370,6 +376,19 @@ const styles = StyleSheet.create({
   dyeName: {
     fontSize: 16,
     flex: 1,
+    fontWeight: '700',
+  },
+  dyeNameBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 10,
+  },
+  dyeNameBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   dyeQuantities: {
     alignItems: 'flex-end',

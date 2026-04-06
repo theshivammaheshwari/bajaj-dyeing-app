@@ -3,8 +3,9 @@ import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   SafeAreaView,
   StatusBar,
   Alert,
@@ -16,8 +17,15 @@ import * as WebBrowser from 'expo-web-browser';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
 
-
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
+
+const MACHINES = [
+  { id: 'm1', name: 'M1', capacity: 10.5, totalSprings: 7 },
+  { id: 'm2', name: 'M2', capacity: 12, totalSprings: 8 },
+  { id: 'm3', name: 'M3', capacity: 12, totalSprings: 8 },
+  { id: 'm4', name: 'M4', capacity: 6, totalSprings: 4 },
+  { id: 'm5', name: 'M5', capacity: 24, totalSprings: 16 },
+];
 
 interface MachineTask {
   shade_id: string;
@@ -42,6 +50,7 @@ export default function DailyTasks() {
   const { colors } = useTheme();
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState('');
 
   useEffect(() => {
     fetchTasks();
@@ -61,68 +70,48 @@ export default function DailyTasks() {
     }
   };
 
+  const filteredTasks = dateFilter.trim()
+    ? tasks.filter(t => t.date.includes(dateFilter.trim()))
+    : tasks;
+
   const deleteTask = async (id: string) => {
-    console.log('Deleting task with ID:', id);
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${id}`, {
         method: 'DELETE',
       });
-
-      console.log('Delete response status:', response.status);
-
       if (response.ok) {
-        if (Platform.OS === 'web') {
-          alert('Task deleted successfully!');
-        } else {
-          Alert.alert('Success', 'Task deleted successfully');
-        }
+        if (Platform.OS === 'web') alert('Task deleted successfully!');
+        else Alert.alert('Success', 'Task deleted successfully');
         fetchTasks();
       } else {
         const errorData = await response.json();
-        console.log('Delete error:', errorData);
-        if (Platform.OS === 'web') {
-          alert(errorData.detail || 'Failed to delete task');
-        } else {
-          Alert.alert('Error', errorData.detail || 'Failed to delete task');
-        }
+        if (Platform.OS === 'web') alert(errorData.detail || 'Failed to delete task');
+        else Alert.alert('Error', errorData.detail || 'Failed to delete task');
       }
     } catch (error) {
       console.error('Error deleting task:', error);
-      if (Platform.OS === 'web') {
-        alert('Failed to delete task');
-      } else {
-        Alert.alert('Error', 'Failed to delete task');
-      }
+      if (Platform.OS === 'web') alert('Failed to delete task');
+      else Alert.alert('Error', 'Failed to delete task');
     }
   };
 
   const handleDeletePress = (id: string, date: string) => {
-    console.log('Delete pressed for ID:', id, 'Date:', date);
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`Kya aap sure hain ki ${date} ka task delete karna hai?`);
-      if (confirmed) {
-        deleteTask(id);
-      }
+      if (confirmed) deleteTask(id);
     } else {
-      Alert.alert(
-        'Delete Task',
-        `Are you sure you want to delete task for ${date}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) },
-        ]
-      );
+      Alert.alert('Delete Task', `Are you sure you want to delete task for ${date}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) },
+      ]);
     }
   };
 
-  const handlePdfDownload = async (id: string, date: string) => {
+  const handlePdfDownload = async (id: string) => {
     try {
       const pdfUrl = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${id}/pdf`;
-      if (Platform.OS === 'web') {
-        window.open(pdfUrl, '_blank');
-      } else {
-        await WebBrowser.openBrowserAsync(pdfUrl);
-      }
+      if (Platform.OS === 'web') window.open(pdfUrl, '_blank');
+      else await WebBrowser.openBrowserAsync(pdfUrl);
     } catch (error) {
       console.error('Error opening PDF:', error);
       Alert.alert('Error', 'Failed to open PDF');
@@ -133,20 +122,14 @@ export default function DailyTasks() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${id}/whatsapp-text`);
       const data = await response.json();
-      
       if (data.text) {
         const encodedText = encodeURIComponent(data.text);
         const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-        
-        if (Platform.OS === 'web') {
-          window.open(whatsappUrl, '_blank');
-        } else {
+        if (Platform.OS === 'web') window.open(whatsappUrl, '_blank');
+        else {
           const canOpen = await Linking.canOpenURL(whatsappUrl);
-          if (canOpen) {
-            await Linking.openURL(whatsappUrl);
-          } else {
-            Alert.alert('Error', 'WhatsApp is not installed');
-          }
+          if (canOpen) await Linking.openURL(whatsappUrl);
+          else Alert.alert('Error', 'WhatsApp is not installed');
         }
       }
     } catch (error) {
@@ -155,119 +138,176 @@ export default function DailyTasks() {
     }
   };
 
-  const renderMachineInfo = (machines: MachineTask[] | undefined, machineName: string) => {
-    if (!machines || machines.length === 0) {
-      return (
-        <View style={[styles.machineCard, { backgroundColor: colors.background, borderLeftColor: colors.primary }]}>
-          <Text style={[styles.machineName, { color: colors.primary }]}>{machineName}</Text>
-          <Text style={[styles.noData, { color: colors.textSecondary }]}>No tasks</Text>
-        </View>
-      );
-    }
+  const getMaxRows = (task: DailyTask) => {
+    return Math.max(
+      ...(MACHINES.map(m => (task[m.id as keyof DailyTask] as MachineTask[] || []).length)),
+      1
+    );
+  };
+
+  const renderTaskGrid = (task: DailyTask) => {
+    const maxRows = getMaxRows(task);
 
     return (
-      <View style={[styles.machineCard, { backgroundColor: colors.background, borderLeftColor: colors.primary }]}>
-        <Text style={[styles.machineName, { color: colors.primary }]}>{machineName} ({machines.length} tasks)</Text>
-        {machines.map((task, index) => (
-          <View key={index} style={[styles.taskItem, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-            <Text style={[styles.taskNumber, { color: colors.textSecondary }]}>Task {index + 1}</Text>
-            <Text style={[styles.shadeText, { color: colors.text }]}>Shade #{task.shade_number}</Text>
-            <View style={styles.springRow}>
-              <View style={styles.springItem}>
-                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>2PLY</Text>
-                <Text style={[styles.springValue, { color: colors.text }]}>{task.springs_2ply}</Text>
-              </View>
-              <View style={styles.springItem}>
-                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>3PLY</Text>
-                <Text style={[styles.springValue, { color: colors.text }]}>{task.springs_3ply}</Text>
-              </View>
-              <View style={styles.springItem}>
-                <Text style={[styles.springLabel, { color: colors.textSecondary }]}>Total</Text>
-                <Text style={[styles.springValueTotal, { color: colors.primary }]}>
-                  {task.springs_2ply + task.springs_3ply}
-                </Text>
-              </View>
-            </View>
+      <View key={task.id} style={[styles.taskCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
+        {/* Task Header with date + actions */}
+        <View style={styles.taskHeader}>
+          <Text style={[styles.dateText, { color: colors.text }]}>📅 {task.date}</Text>
+          <View style={styles.taskActions}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+              onPress={() => router.push(`/edit-daily-task?taskId=${task.id}`)}
+            >
+              <Text style={styles.actionBtnText}>✏️ Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.danger }]}
+              onPress={() => handleDeletePress(task.id, task.date)}
+            >
+              <Text style={styles.actionBtnText}>🗑 Delete</Text>
+            </TouchableOpacity>
           </View>
-        ))}
+        </View>
+
+        {/* Share Row */}
+        <View style={styles.shareRow}>
+          <TouchableOpacity
+            style={[styles.shareBtn, { backgroundColor: '#E53E3E' }]}
+            onPress={() => handlePdfDownload(task.id)}
+          >
+            <Text style={styles.shareBtnText}>📄 PDF Download</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
+            onPress={() => handleWhatsAppShare(task.id)}
+          >
+            <Text style={styles.shareBtnText}>📱 WhatsApp Share</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Grid - same layout as Add Daily Task */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+          <View style={styles.gridContainer}>
+            {/* Machine Header Row */}
+            <View style={styles.gridRow}>
+              <View style={styles.rowNumberCell}>
+                <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
+              </View>
+              {MACHINES.map(machine => (
+                <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
+                  <View style={styles.machineStats}>
+                    <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.75)' }]}>
+                      {machine.capacity}kg
+                    </Text>
+                    <Text style={[styles.machineCountText, { color: '#fff' }]}>
+                      Cap: {machine.totalSprings}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Task Grid Rows */}
+            {Array.from({ length: maxRows }).map((_, rowIndex) => (
+              <View key={rowIndex} style={styles.gridRow}>
+                <View style={styles.rowNumberCell}>
+                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
+                </View>
+                {MACHINES.map(machine => {
+                  const machineTasks = (task[machine.id as keyof DailyTask] as MachineTask[]) || [];
+                  const mt = machineTasks[rowIndex];
+
+                  return (
+                    <View
+                      key={machine.id}
+                      style={[
+                        styles.gridCell,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                        mt && [styles.filledGridCell, { backgroundColor: '#e8f5e9' }],
+                      ]}
+                    >
+                      {mt ? (
+                        <>
+                          <View style={styles.cellHeader}>
+                            <Text style={[styles.cellShadeText, { color: colors.primary }]}>
+                              #{mt.shade_number}
+                            </Text>
+                          </View>
+                          <View style={styles.cellSummary}>
+                            <View style={styles.summaryPlyRow}>
+                              <View style={styles.summaryPlyItem}>
+                                <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>2P</Text>
+                                <Text style={[styles.summaryPlyValue, { color: colors.text }]}>{mt.springs_2ply}</Text>
+                              </View>
+                              <View style={styles.summaryPlyItem}>
+                                <Text style={[styles.summaryPlyLabel, { color: colors.textSecondary }]}>3P</Text>
+                                <Text style={[styles.summaryPlyValue, { color: colors.text }]}>{mt.springs_3ply}</Text>
+                              </View>
+                            </View>
+                            <Text style={[styles.summaryTotalText, { color: colors.primary }]}>
+                              Total: {mt.springs_2ply + mt.springs_3ply}/{machine.totalSprings}
+                            </Text>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
     );
   };
 
-  const renderTaskItem = ({ item }: { item: DailyTask }) => (
-    <View style={[styles.taskCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.taskHeader}>
-        <Text style={[styles.dateText, { color: colors.text }]}>📅 {item.date}</Text>
-        <View style={styles.taskActions}>
-          <TouchableOpacity
-            style={[styles.editBtn, { backgroundColor: colors.secondary }]}
-            onPress={() => router.push(`/edit-daily-task?taskId=${item.id}`)}
-          >
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.deleteBtn, { backgroundColor: colors.danger }]}
-            onPress={() => handleDeletePress(item.id, item.date)}
-          >
-            <Text style={styles.deleteBtnText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Share Buttons Row */}
-      <View style={styles.shareRow}>
-        <TouchableOpacity
-          style={styles.pdfBtn}
-          onPress={() => handlePdfDownload(item.id, item.date)}
-        >
-          <Text style={styles.shareBtnText}>📄 PDF Download</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.whatsappBtn}
-          onPress={() => handleWhatsAppShare(item.id)}
-        >
-          <Text style={styles.shareBtnText}>📱 WhatsApp Share</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.machinesGrid}>
-        {renderMachineInfo(item.m1, 'M1')}
-        {renderMachineInfo(item.m2, 'M2')}
-        {renderMachineInfo(item.m3, 'M3')}
-        {renderMachineInfo(item.m4, 'M4')}
-        {renderMachineInfo(item.m5, 'M5')}
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.card} />
-      <View style={[styles.header, { backgroundColor: colors.card }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Daily Machine Tasks</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Track daily production</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
+
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Daily Machine Tasks</Text>
+        </View>
+        <View style={[styles.dateFilterContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+          <TextInput
+            style={[styles.dateFilterInput, { color: colors.text }]}
+            placeholder="🔍 Filter by date (e.g. 2026-04)"
+            placeholderTextColor={colors.textSecondary}
+            value={dateFilter}
+            onChangeText={setDateFilter}
+          />
+        </View>
       </View>
 
       {loading ? (
         <View style={styles.centerContent}>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading tasks...</Text>
         </View>
-      ) : tasks.length === 0 ? (
+      ) : filteredTasks.length === 0 ? (
         <View style={styles.centerContent}>
-          <Text style={[styles.emptyText, { color: colors.text }]}>No tasks created yet</Text>
-          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Tap + button to add today's task</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>
+            {dateFilter ? 'No tasks found for this date' : 'No tasks created yet'}
+          </Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            {!dateFilter && 'Tap + button to add today\'s task'}
+          </Text>
         </View>
       ) : (
-        <FlatList
-          data={tasks}
-          renderItem={renderTaskItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
+        >
+          {filteredTasks.map(task => renderTaskGrid(task))}
+        </ScrollView>
       )}
 
       <TouchableOpacity
@@ -286,36 +326,58 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  backLink: {
-    fontSize: 16,
-    fontWeight: '600',
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 12,
   },
+  backLink: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
+    flex: 1,
   },
-  headerSubtitle: {
+  dateFilterContainer: {
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+  },
+  dateFilterInput: {
     fontSize: 14,
+    paddingVertical: 8,
   },
-  listContainer: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 16,
     paddingBottom: 100,
   },
   taskCard: {
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dateText: {
     fontSize: 18,
@@ -325,103 +387,131 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  editBtn: {
+  actionBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  editBtnText: {
+  actionBtnText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
-  },
-  deleteBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  deleteBtnText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   shareRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  pdfBtn: {
+  shareBtn: {
     flex: 1,
-    backgroundColor: '#FF5722',
-    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  whatsappBtn: {
-    flex: 1,
-    backgroundColor: '#25D366',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   shareBtnText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  machinesGrid: {
-    gap: 12,
+  // Grid styles matching add-daily-task
+  gridContainer: {
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  machineCard: {
-    borderRadius: 12,
-    padding: 12,
-    borderLeftWidth: 4,
-  },
-  machineName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  taskItem: {
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-  },
-  taskNumber: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  shadeText: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  springRow: {
+  gridRow: {
     flexDirection: 'row',
-    gap: 12,
+    marginBottom: 8,
   },
-  springItem: {
-    flex: 1,
+  rowNumberCell: {
+    width: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  springLabel: {
-    fontSize: 12,
-    marginBottom: 4,
+  rowNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
-  springValue: {
-    fontSize: 16,
+  machineInfoCard: {
+    width: 180,
+    marginHorizontal: 4,
+    padding: 12,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  machineNameText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#fff',
+  },
+  machineStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  machineWeightText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  springValueTotal: {
+  machineCountText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  gridCell: {
+    width: 180,
+    minHeight: 120,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    position: 'relative',
+  },
+  filledGridCell: {},
+  cellHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingBottom: 6,
+    marginBottom: 8,
+  },
+  cellShadeText: {
     fontSize: 16,
     fontWeight: 'bold',
   },
-  noData: {
+  cellSummary: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  summaryPlyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  summaryPlyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryPlyLabel: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  summaryPlyValue: {
     fontSize: 14,
-    fontStyle: 'italic',
+    fontWeight: '700',
+  },
+  summaryTotalText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  emptyCellText: {
+    textAlign: 'center',
+    marginTop: 10,
+    fontSize: 14,
   },
   addButton: {
     position: 'absolute',
@@ -429,17 +519,18 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 8,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
+    letterSpacing: 0.3,
   },
   centerContent: {
     flex: 1,
@@ -461,4 +552,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

@@ -438,11 +438,7 @@ export default function AddDailyTask() {
                             <TouchableOpacity
                               style={styles.cellHeader}
                               onPress={() => {
-                                if (task.shadeId && !isActive) {
-                                  router.push(`/shade-detail?shadeId=${task.shadeId}`);
-                                } else {
-                                  setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
-                                }
+                                setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
                               }}
                             >
                               <Text
