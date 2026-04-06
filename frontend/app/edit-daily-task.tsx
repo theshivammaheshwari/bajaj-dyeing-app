@@ -42,7 +42,7 @@ interface MachineTaskData {
 
 export default function EditDailyTask() {
   const router = useRouter();
-  const { taskId } = useLocalSearchParams(); // This is the MongoDB ID string
+  const { taskId } = useLocalSearchParams(); 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shades, setShades] = useState<Shade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,23 +68,17 @@ export default function EditDailyTask() {
   const fetchExistingTask = async () => {
     try {
       setLoading(true);
-      // We need to find which date this taskId belongs to or fetch all and find the ID
-      // But the backend usually has a route for all or by date. 
-      // Let's try fetching all daily tasks and finding our taskId
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`);
       const allTasks = await response.json();
-      
       const data = allTasks.find((t: any) => t.id === taskId);
 
       if (data) {
         setDate(data.date);
         const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
-        
         MACHINES.forEach(m => {
           const apiTasks = data[m.id] || [];
-          
           newMachineTasks[m.id] = apiTasks.map((t: any, idx: number) => ({
-            id: `${m.id}-${idx}`, // Using position-based ID for grid state
+            id: `${m.id}-${idx}`,
             shadeId: t.shade_id || '',
             shadeNumber: t.shade_number ? String(t.shade_number) : '',
             springs2ply: t.springs_2ply !== undefined ? String(t.springs_2ply) : '0',
@@ -92,23 +86,16 @@ export default function EditDailyTask() {
             showShadeDropdown: false,
             shadeSearchText: t.shade_number ? String(t.shade_number) : ''
           }));
-
           while (newMachineTasks[m.id].length < 5) {
             newMachineTasks[m.id].push({
               id: `${m.id}-${newMachineTasks[m.id].length}`,
-              shadeId: '',
-              shadeNumber: '',
-              springs2ply: '',
-              springs3ply: '',
-              showShadeDropdown: false,
-              shadeSearchText: ''
+              shadeId: '', shadeNumber: '', springs2ply: '', springs3ply: '', showShadeDropdown: false, shadeSearchText: ''
             });
           }
         });
         setMachineTasks(newMachineTasks);
       }
     } catch (error) {
-      console.error('Error fetching existing task:', error);
       Alert.alert('Error', 'Could not load existing task data');
     } finally {
       setLoading(false);
@@ -119,8 +106,7 @@ export default function EditDailyTask() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/shades`);
       const data = await response.json();
-      const sortedShades = data.sort((a: Shade, b: Shade) => (parseInt(a.shade_number) || 0) - (parseInt(b.shade_number) || 0));
-      setShades(sortedShades);
+      setShades(data.sort((a: Shade, b: Shade) => (parseInt(a.shade_number) || 0) - (parseInt(b.shade_number) || 0)));
     } catch (error) {
       console.error('Error fetching shades:', error);
     }
@@ -134,7 +120,6 @@ export default function EditDailyTask() {
       ...prev,
       [machineId]: prev[machineId].map(task => {
         if (task.id !== taskId) return task;
-
         if (field === 'shadeId') {
           const selectedShade = shades.find(s => s.id === value);
           return { ...task, shadeId: value as string, shadeNumber: selectedShade?.shade_number || '', shadeSearchText: selectedShade?.shade_number || '', showShadeDropdown: false };
@@ -151,8 +136,8 @@ export default function EditDailyTask() {
   };
 
   const getFilteredShades = (text: string) => {
-    if (!text) return shades.slice(0, 10);
-    return shades.filter(s => s.shade_number.toString().includes(text));
+    if (!text || text.trim() === '') return shades;
+    return shades.filter(s => s.shade_number.toString().toLowerCase().includes(text.toLowerCase()));
   };
 
   const addRow = () => {
@@ -168,52 +153,33 @@ export default function EditDailyTask() {
   const validateAndSave = async () => {
     const payload: any = { date };
     let hasData = false;
-
     for (const machine of MACHINES) {
       const tasks = machineTasks[machine.id].filter(t => t.shadeId !== '');
       const totalSprings = tasks.reduce((sum, t) => sum + (parseInt(t.springs2ply) || 0) + (parseInt(t.springs3ply) || 0), 0);
-      
       if (totalSprings > machine.totalSprings) {
         Alert.alert('Error', `${machine.name} exceeds capacity (${totalSprings}/${machine.totalSprings})!`);
         return;
       }
-
       if (tasks.length > 0) {
         payload[machine.id] = tasks.map(t => ({
-          shade_id: t.shadeId,
-          shade_number: t.shadeNumber,
+          shade_id: t.shadeId, shade_number: t.shadeNumber,
           springs_2ply: parseInt(t.springs2ply) || 0,
           springs_3ply: parseInt(t.springs3ply) || 0,
           weight: machine.capacity,
         }));
         hasData = true;
-      } else {
-        payload[machine.id] = [];
-      }
+      } else { payload[machine.id] = []; }
     }
-
     if (!hasData) return Alert.alert('Error', 'No tasks added');
-
     setLoading(true);
     try {
-      const url = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${taskId}`;
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${taskId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Updated!', () => router.back());
-      } else {
-        const err = await response.json();
-        Alert.alert('Error', `Update failed: ${err.detail || 'Unknown error'}`);
-      }
-    } catch (e) {
-      Alert.alert('Error', 'Failed to connect to server');
-    } finally {
-      setLoading(false);
-    }
+      if (response.ok) Alert.alert('Success', 'Updated!', () => router.back());
+      else { const err = await response.json(); Alert.alert('Error', `Update failed: ${err.detail || 'Unknown error'}`); }
+    } catch (e) { Alert.alert('Error', 'Failed to connect to server'); } finally { setLoading(false); }
   };
 
   return (
@@ -224,10 +190,9 @@ export default function EditDailyTask() {
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.backButtonText}>← Back</Text></TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Task</Text>
           <View style={styles.dateInputContainer}>
-            <TextInput style={styles.dateInput} value={date} onChangeText={setDate} editable={false} />
+            <TextInput style={styles.dateInput} value={date} editable={false} />
           </View>
         </View>
-
         <ScrollView horizontal style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View>
             <View style={styles.gridRow}>
@@ -241,15 +206,14 @@ export default function EditDailyTask() {
                 </View>
               ))}
             </View>
-
             {Array.from({ length: maxRows }).map((_, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
+              <View key={rowIndex} style={[styles.gridRow, { zIndex: maxRows - rowIndex }]}>
                 <View style={styles.rowNumberCell}><Text style={styles.rowNumberText}>{rowIndex + 1}</Text></View>
                 {MACHINES.map(m => {
                   const t = machineTasks[m.id][rowIndex];
                   const isActive = activeTask?.machineId === m.id && activeTask?.taskId === t?.id;
                   return (
-                    <View key={m.id} style={[styles.gridCell, isActive && styles.activeGridCell, t?.shadeId && styles.filledGridCell]}>
+                    <View key={m.id} style={[styles.gridCell, isActive && styles.activeGridCell, t?.shadeId && styles.filledGridCell, { zIndex: isActive ? 1000 : 1 }]}>
                       {t && (
                         <>
                           <TouchableOpacity onPress={() => setActiveTask(isActive ? null : { machineId: m.id, taskId: t.id })}>
@@ -262,12 +226,15 @@ export default function EditDailyTask() {
                                 onFocus={() => updateTask(m.id, t.id, 'showShadeDropdown', true)} keyboardType="number-pad" autoFocus />
                               {t.showShadeDropdown && (
                                 <View style={styles.inlineDropdown}>
-                                  <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                                  <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={{ maxHeight: 250 }}>
                                     {getFilteredShades(t.shadeSearchText).map(s => (
                                       <TouchableOpacity key={s.id} style={styles.inlineDropdownItem} onPress={() => updateTask(m.id, t.id, 'shadeId', s.id)}>
                                         <Text style={styles.inlineDropdownText}>#${s.shade_number}</Text>
                                       </TouchableOpacity>
                                     ))}
+                                    {getFilteredShades(t.shadeSearchText).length === 0 && (
+                                      <View style={styles.inlineDropdownItem}><Text style={styles.inlineDropdownText}>No shades found</Text></View>
+                                    )}
                                   </ScrollView>
                                 </View>
                               )}
@@ -317,15 +284,15 @@ const styles = StyleSheet.create({
   machineNameText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   machineCountText: { color: '#fff', fontSize: 12 },
   gridCell: { width: 90, minHeight: 110, backgroundColor: '#1a1a2e', borderRadius: 12, marginHorizontal: 4, padding: 6, borderWidth: 1, borderColor: '#2a2a3e', justifyContent: 'center' },
-  activeGridCell: { borderColor: '#4CAF50', backgroundColor: '#1e1e30', zIndex: 10 },
+  activeGridCell: { borderColor: '#4CAF50', backgroundColor: '#1e1e30' },
   filledGridCell: { borderColor: '#2e7d32' },
   cellShadeText: { color: '#666', fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
   filledText: { color: '#4CAF50' },
   inlineEditor: { marginTop: 2 },
   inlineShadeInput: { backgroundColor: '#0f0f1e', borderRadius: 6, padding: 6, color: '#fff', fontSize: 13, borderWidth: 1, borderColor: '#333', textAlign: 'center' },
-  inlineDropdown: { position: 'absolute', top: 35, left: 0, right: 0, backgroundColor: '#2a2a3e', borderRadius: 8, maxHeight: 200, zIndex: 1000, borderWidth: 2, borderColor: '#4CAF50' },
-  inlineDropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#3a3a4e' },
-  inlineDropdownText: { color: '#fff', fontSize: 13, textAlign: 'center' },
+  inlineDropdown: { position: 'absolute', top: 35, left: -4, right: -4, backgroundColor: '#2a2a3e', borderRadius: 8, maxHeight: 250, zIndex: 10000, borderWidth: 2, borderColor: '#4CAF50', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4 },
+  inlineDropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#3a3a4e' },
+  inlineDropdownText: { color: '#fff', fontSize: 14, textAlign: 'center', fontWeight: '600' },
   inlinePlyRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 4 },
   inlinePlyInput: { backgroundColor: '#0f0f1e', borderRadius: 6, flex: 1, padding: 4, color: '#fff', fontSize: 11, textAlign: 'center', borderWidth: 1, borderColor: '#333' },
   cellSummary: { flex: 1, justifyContent: 'center' },
