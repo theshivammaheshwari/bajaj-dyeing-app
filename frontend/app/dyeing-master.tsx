@@ -47,6 +47,7 @@ export default function DyeingMaster() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{[key: string]: {ply2: string, ply3: string}}>({});
+  const [activeTask, setActiveTask] = useState<{ machineId: string; taskIndex: number } | null>(null);
 
   const handleLogout = async () => {
     const performLogout = async () => {
@@ -384,96 +385,215 @@ export default function DyeingMaster() {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f1e" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.headerBackground} />
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Dyeing Master</Text>
-          <Text style={styles.headerSubtitle}>Worker Panel</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Dyeing Master</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Worker Panel</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: colors.badgeBackground }]}>
+            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.dateBar}>
-        <TextInput
-          style={styles.dateInput}
-          value={date}
-          onChangeText={setDate}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor="#666"
-        />
+      
+      <View style={[styles.dateBar, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+        <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+          <TextInput
+            style={[styles.dateInput, { color: colors.primary }]}
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {!dailyTask && !loading && (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No tasks found for {date}</Text>
+
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        horizontal={true}
+        showsHorizontalScrollIndicator={true}
+      >
+        <View>
+          {/* Top Row: Machine Info Cards */}
+          <View style={styles.gridRow}>
+            <View style={styles.rowNumberCell}>
+              <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
+            </View>
+            {MACHINES.map(machine => {
+              const tasks = dailyTask?.[machine.id] || [];
+              const totalSpringsUsed = tasks.reduce((sum: number, task: any) => 
+                sum + (task.springs_2ply || 0) + (task.springs_3ply || 0), 0
+              );
+              return (
+                <View key={machine.id} style={[styles.machineInfoCard, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.machineNameText, { color: '#fff' }]}>{machine.name}</Text>
+                  <Text style={[styles.machineWeightText, { color: 'rgba(255,255,255,0.7)' }]}>{machine.capacity}kg</Text>
+                  <Text style={[styles.machineCountText, { color: '#fff' }]}>{totalSpringsUsed}/{machine.totalSprings}</Text>
+                </View>
+              );
+            })}
           </View>
-        )}
-        {dailyTask && MACHINES.map((machine) => renderMachineTasks(machine))}
-        {payment && (
-          <View style={styles.paymentCard}>
-            <Text style={styles.paymentTitle}>💰 Payment Calculation</Text>
-            
-            {/* Completed Tasks */}
-            {payment.completed_tasks > 0 && (
-              <View style={styles.paymentSection}>
-                <Text style={styles.sectionLabel}>✓ Completed Tasks</Text>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Weight:</Text>
-                  <Text style={styles.paymentValue}>{payment.completed_kg} kg</Text>
+
+          {/* Task Grid Rows */}
+          {!dailyTask && !loading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks found for {date}</Text>
+            </View>
+          ) : (
+            Array.from({ length: 5 }).map((_, rowIndex) => (
+              <View key={rowIndex} style={styles.gridRow}>
+                <View style={styles.rowNumberCell}>
+                  <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
                 </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Rate:</Text>
-                  <Text style={styles.paymentValue}>₹{payment.rate_per_kg}/kg</Text>
+                {MACHINES.map(machine => {
+                  const tasks = dailyTask?.[machine.id] || [];
+                  const task = tasks[rowIndex];
+                  const isActive = activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
+
+                  return (
+                    <View 
+                      key={machine.id} 
+                      style={[
+                        styles.gridCell, 
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                        isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
+                        task ? (
+                          task.status === 'completed' ? [styles.completedCell, { backgroundColor: theme === 'dark' ? '#1a2e1a' : '#e8f5e9' }] :
+                          task.status === 'rejected' ? [styles.rejectedCell, { backgroundColor: theme === 'dark' ? '#2e1a1a' : '#ffebee' }] :
+                          task.status === 'in-progress' ? [styles.progressCell, { backgroundColor: theme === 'dark' ? '#1a202e' : '#e3f2fd' }] :
+                          null
+                        ) : null
+                      ]}
+                    >
+                      {task ? (
+                        <>
+                          <TouchableOpacity 
+                            style={styles.cellHeader} 
+                            onPress={() => setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })}
+                          >
+                            <Text style={[styles.cellShadeText, { color: colors.primary }]}>
+                              #{task.shade_number}
+                            </Text>
+                            <Text style={[styles.statusIndicator, { 
+                              color: task.status === 'completed' ? colors.success : 
+                                     task.status === 'rejected' ? colors.danger : 
+                                     task.status === 'in-progress' ? colors.secondary : 
+                                     colors.textSecondary 
+                            }]}>
+                              {task.status === 'completed' ? '✓' : 
+                               task.status === 'rejected' ? '✕' : 
+                               task.status === 'in-progress' ? '●' : '○'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {isActive ? (
+                            <View style={styles.inlineEditor}>
+                              <View style={styles.weightInputsContainer}>
+                                <View style={styles.weightInputWrap}>
+                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>2P kg</Text>
+                                  <TextInput
+                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
+                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
+                                    onChangeText={(val) => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
+                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0"
+                                    placeholderTextColor={colors.textSecondary}
+                                  />
+                                </View>
+                                <View style={styles.weightInputWrap}>
+                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>3P kg</Text>
+                                  <TextInput
+                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
+                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
+                                    onChangeText={(val) => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
+                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0"
+                                    placeholderTextColor={colors.textSecondary}
+                                  />
+                                </View>
+                              </View>
+
+                              <View style={styles.actionButtons}>
+                                {task.status !== 'in-progress' && task.status !== 'completed' && task.status !== 'rejected' && (
+                                  <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.primary }]} onPress={() => startTask(machine.id, rowIndex)}>
+                                    <Text style={styles.actionButtonText}>Start</Text>
+                                  </TouchableOpacity>
+                                )}
+                                {task.status === 'in-progress' && (
+                                  <View style={styles.progressActions}>
+                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.success }]} onPress={() => completeTask(machine.id, rowIndex)}>
+                                      <Text style={styles.actionButtonText}>✓</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.danger }]} onPress={() => rejectTask(machine.id, rowIndex)}>
+                                      <Text style={styles.actionButtonText}>✕</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]} onPress={() => revokeTask(machine.id, rowIndex, task.status)}>
+                                      <Text style={styles.actionButtonText}>↺</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
+                                {(task.status === 'completed' || task.status === 'rejected') && (
+                                  <TouchableOpacity style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]} onPress={() => revokeTask(machine.id, rowIndex, task.status)}>
+                                    <Text style={styles.actionButtonText}>Reset Task</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.cellSummary}>
+                              <Text style={[styles.plyCountText, { color: colors.textSecondary }]}>
+                                {task.springs_2ply || 0}P + {task.springs_3ply || 0}P
+                              </Text>
+                              {(task.ply2_weight > 0 || task.ply3_weight > 0) && (
+                                <Text style={[styles.weightSumText, { color: colors.text }]}>
+                                  {(task.ply2_weight || 0 + task.ply3_weight || 0).toFixed(2)} kg
+                                </Text>
+                              )}
+                            </View>
+                          )}
+                        </>
+                      ) : (
+                        <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))
+          )}
+
+          {payment && (
+            <View style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.paymentTitle, { color: colors.text }]}>💰 Payment Summary</Text>
+              <View style={styles.paymentFlex}>
+                <View style={styles.paymentStat}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
+                  <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment}</Text>
+                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg} kg</Text>
                 </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Payment:</Text>
-                  <Text style={styles.paymentValue}>₹{payment.completed_payment}</Text>
+                <View style={styles.paymentStat}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rejected</Text>
+                  <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment}</Text>
+                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg} kg</Text>
+                </View>
+                <View style={styles.paymentStat}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
+                  <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment}</Text>
+                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg} kg</Text>
                 </View>
               </View>
-            )}
-            
-            {/* Rejected Tasks - Black Colour */}
-            {payment.rejected_tasks > 0 && (
-              <View style={[styles.paymentSection, styles.rejectedSection]}>
-                <Text style={styles.sectionLabelRejected}>✕ Rejected (Black Colour)</Text>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Weight:</Text>
-                  <Text style={styles.paymentValue}>{payment.rejected_kg} kg</Text>
-                </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Rate (Half):</Text>
-                  <Text style={styles.paymentValue}>₹{payment.half_rate}/kg</Text>
-                </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Payment:</Text>
-                  <Text style={styles.paymentValue}>₹{payment.rejected_payment}</Text>
-                </View>
-              </View>
-            )}
-            
-            {/* Total */}
-            <View style={[styles.paymentRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total Payment:</Text>
-              <Text style={styles.totalPayment}>₹{payment.total_payment}</Text>
             </View>
-            
-            <View style={styles.statsRow}>
-              <Text style={styles.statText}>Total: {payment.total_kg} kg</Text>
-              <Text style={styles.statText}>Tasks: {payment.completed_tasks + payment.rejected_tasks}</Text>
-            </View>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -486,65 +606,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    borderBottomWidth: 1,
   },
   headerLeft: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { fontSize: 14, fontWeight: '600' },
+  themeToggle: { padding: 8, borderRadius: 12 },
   logoutButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: '#fff', fontWeight: 'bold' },
-  dateBar: { paddingHorizontal: 16, paddingVertical: 8 },
+  dateBar: { padding: 12 },
+  dateInputContainer: { 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    paddingHorizontal: 12,
+  },
   dateInput: { 
     fontSize: 16, 
     fontWeight: 'bold', 
-    borderRadius: 8, 
-    paddingHorizontal: 12, 
     paddingVertical: 6,
-    borderWidth: 1,
   },
-  scroll: { padding: 16 },
-  emptyContainer: { padding: 40, alignItems: 'center' },
+  scroll: { padding: 12, paddingBottom: 100 },
+  gridRow: { flexDirection: 'row', marginBottom: 8 },
+  rowNumberCell: { width: 30, justifyContent: 'center', alignItems: 'center' },
+  rowNumberText: { fontWeight: 'bold', fontSize: 12 },
+  machineInfoCard: {
+    width: 90, height: 90, borderRadius: 12, marginHorizontal: 4, 
+    padding: 8, justifyContent: 'center', alignItems: 'center'
+  },
+  machineNameText: { fontWeight: 'bold', fontSize: 18 },
+  machineWeightText: { fontSize: 10 },
+  machineCountText: { fontWeight: '600', fontSize: 14, marginTop: 4 },
+  gridCell: {
+    width: 90, minHeight: 120, borderRadius: 12, marginHorizontal: 4, 
+    padding: 6, borderWidth: 1, justifyContent: 'center'
+  },
+  activeGridCell: { zIndex: 10, elevation: 5 },
+  cellHeader: { 
+    flexDirection: 'row', justifyContent: 'space-between', 
+    alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingBottom: 4, marginBottom: 4 
+  },
+  cellShadeText: { fontSize: 13, fontWeight: 'bold' },
+  statusIndicator: { fontSize: 14, fontWeight: 'bold' },
+  inlineEditor: { flex: 1, justifyContent: 'space-between' },
+  weightInputsContainer: { gap: 4, marginBottom: 6 },
+  weightInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  weightLabel: { fontSize: 9, fontWeight: 'bold', width: 30 },
+  smallInput: { 
+    flex: 1, borderRadius: 4, borderWidth: 1, padding: 2, 
+    fontSize: 10, textAlign: 'center' 
+  },
+  actionButtons: { marginTop: 2 },
+  progressActions: { flexDirection: 'row', gap: 2 },
+  smallActionButton: { 
+    paddingVertical: 6, borderRadius: 4, alignItems: 'center', 
+    justifyContent: 'center', flex: 1 
+  },
+  actionButtonText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  cellSummary: { alignItems: 'center', gap: 2 },
+  plyCountText: { fontSize: 10, fontWeight: '600' },
+  weightSumText: { fontSize: 12, fontWeight: 'bold' },
+  emptyCellText: { textAlign: 'center', fontSize: 20 },
+  emptyContainer: { padding: 40, width: 480, alignItems: 'center' },
   emptyText: { fontSize: 16, fontWeight: '600' },
-  machineCard: { borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4 },
-  machineName: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
-  noTasks: { fontSize: 14 },
-  statusSection: { marginBottom: 16 },
-  statusTitle: { fontSize: 15, fontWeight: '600', marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1 },
-  inProgressTitle: { },
-  completedTitle: { },
-  rejectedTitle: { },
-  taskBox: { borderRadius: 8, padding: 12, marginBottom: 12 },
-  taskTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  shadeText: { fontSize: 14, marginBottom: 4 },
-  springText: { fontSize: 12, marginBottom: 12 },
-  weightRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  weightInput: { flex: 1 },
-  label: { fontSize: 12, marginBottom: 6 },
-  input: { borderRadius: 8, padding: 10, fontSize: 14, borderWidth: 1 },
-  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  startButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-  completeButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-  rejectButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-  revokeButton: { width: 44, padding: 12, borderRadius: 8, alignItems: 'center' },
-  revokeButtonSmall: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  completedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flex: 1 },
-  completedText: { fontWeight: '600', fontSize: 14 },
-  rejectedText: { fontWeight: '600', fontSize: 14 },
-  timeText: { fontSize: 11, marginTop: 4 },
+  completedCell: {},
+  rejectedCell: {},
+  progressCell: {},
+  paymentCard: { 
+    marginTop: 24, marginHorizontal: 4, borderRadius: 16, 
+    padding: 16, borderWidth: 1, width: 470 
+  },
+  paymentTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  paymentFlex: { flexDirection: 'row', justifyContent: 'space-between' },
+  paymentStat: { flex: 1, alignItems: 'center' },
+  statLabel: { fontSize: 12, marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: 'bold' },
+  statValueTotal: { fontSize: 18, fontWeight: 'bold' },
+  statSub: { fontSize: 10, marginTop: 2 },
   loadingText: { fontSize: 16, textAlign: 'center', marginTop: 100 },
-  paymentCard: { borderRadius: 16, padding: 20, marginTop: 16, borderWidth: 2 },
-  paymentTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
-  paymentSection: { borderRadius: 12, padding: 16, marginBottom: 12, borderLeftWidth: 4 },
-  sectionLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
-  sectionLabelRejected: { fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
-  paymentRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  paymentLabel: { fontSize: 14 },
-  paymentValue: { fontSize: 14, fontWeight: '600' },
-  totalRow: { borderTopWidth: 2, paddingTop: 16, marginTop: 12 },
-  totalLabel: { fontSize: 18, fontWeight: 'bold' },
-  totalPayment: { fontSize: 22, fontWeight: 'bold' },
-  statsRow: { flexDirection: 'row', gap: 16, marginTop: 12, justifyContent: 'center' },
-  statText: { fontSize: 13 },
-  rejectedStat: { fontSize: 14 },
 });
