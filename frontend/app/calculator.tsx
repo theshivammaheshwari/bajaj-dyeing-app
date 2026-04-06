@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
 
@@ -62,6 +63,35 @@ export default function Calculator() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
+
+  const CART_STORAGE_KEY = 'bajaj_recipe_cart';
+
+  // Load cart from AsyncStorage on mount
+  useEffect(() => {
+    const loadCart = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(CART_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setCart(parsed);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading cart:', e);
+      }
+    };
+    loadCart();
+  }, []);
+
+  // Save cart to AsyncStorage whenever it changes
+  const saveCart = useCallback(async (updatedCart: CartItem[]) => {
+    try {
+      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+    } catch (e) {
+      console.error('Error saving cart:', e);
+    }
+  }, []);
 
   useEffect(() => {
     if (shadeId) {
@@ -121,23 +151,35 @@ export default function Calculator() {
       dyes: allMachinesData[selectedMachine],
     };
 
-    setCart(prev => [...prev, cartItem]);
+    setCart(prev => {
+      const newCart = [...prev, cartItem];
+      saveCart(newCart);
+      return newCart;
+    });
     setAddedFeedback(true);
     setTimeout(() => setAddedFeedback(false), 1500);
   };
 
   const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    setCart(prev => {
+      const newCart = prev.filter(item => item.id !== id);
+      saveCart(newCart);
+      return newCart;
+    });
   };
 
   const clearCart = () => {
+    const doClear = () => {
+      setCart([]);
+      saveCart([]);
+    };
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Clear all items from cart?');
-      if (confirmed) setCart([]);
+      if (confirmed) doClear();
     } else {
       Alert.alert('Clear Cart', 'Remove all items?', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => setCart([]) },
+        { text: 'Clear', style: 'destructive', onPress: doClear },
       ]);
     }
   };
