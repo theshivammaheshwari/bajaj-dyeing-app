@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
+import { printDailyTaskPdf } from '../lib/pdf-utils';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -107,14 +108,13 @@ export default function DailyTasks() {
     }
   };
 
-  const handlePdfDownload = async (id: string) => {
-    try {
-      const pdfUrl = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${id}/pdf`;
-      if (Platform.OS === 'web') window.open(pdfUrl, '_blank');
-      else await WebBrowser.openBrowserAsync(pdfUrl);
-    } catch (error) {
-      console.error('Error opening PDF:', error);
-      Alert.alert('Error', 'Failed to open PDF');
+  const handlePdfDownload = (task: DailyTask) => {
+    if (Platform.OS === 'web') {
+      printDailyTaskPdf(task);
+    } else {
+      // Fallback: use backend PDF for native
+      const pdfUrl = `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${task.id}/pdf`;
+      WebBrowser.openBrowserAsync(pdfUrl);
     }
   };
 
@@ -173,7 +173,7 @@ export default function DailyTasks() {
         <View style={styles.shareRow}>
           <TouchableOpacity
             style={[styles.shareBtn, { backgroundColor: '#E53E3E' }]}
-            onPress={() => handlePdfDownload(task.id)}
+            onPress={() => handlePdfDownload(task)}
           >
             <Text style={styles.shareBtnText}>📄 PDF Download</Text>
           </TouchableOpacity>

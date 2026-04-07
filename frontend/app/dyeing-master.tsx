@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
+import { printCompletedTasksPdf, printAllTasksPdf } from '../lib/pdf-utils';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 const MACHINES = [
@@ -298,6 +299,22 @@ export default function DyeingMaster() {
             placeholderTextColor={colors.textSecondary}
           />
         </View>
+        {Platform.OS === 'web' && dailyTask && (
+          <View style={styles.pdfButtonRow}>
+            <TouchableOpacity
+              style={[styles.pdfButton, { backgroundColor: colors.success }]}
+              onPress={() => printCompletedTasksPdf(dailyTask, date)}
+            >
+              <Text style={styles.pdfButtonText}>📄 Completed PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pdfButton, { backgroundColor: colors.primary }]}
+              onPress={() => printAllTasksPdf(dailyTask, date)}
+            >
+              <Text style={styles.pdfButtonText}>📄 All Tasks PDF</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -827,5 +844,21 @@ const styles = StyleSheet.create({
   },
   progressCell: {
     opacity: 1,
+  },
+  pdfButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    justifyContent: 'center',
+  },
+  pdfButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  pdfButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });
