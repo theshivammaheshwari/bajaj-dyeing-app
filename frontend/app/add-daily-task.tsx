@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getBackendBaseUrl } from '../lib/api-base';
@@ -30,6 +31,13 @@ interface Shade {
   id: string;
   shade_number: string;
   original_weight?: number;
+}
+
+interface CartItem {
+  cartId: string;
+  shadeId: string;
+  shade_number: string;
+  weight: number;
 }
 
 interface MachineTaskData {
@@ -71,6 +79,12 @@ export default function AddDailyTask() {
   const [machineTasks, setMachineTasks] = useState<{ [key: string]: MachineTaskData[] }>(initialMachineTasks());
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
   const [saveError, setSaveError] = useState('');
+  
+  // Auto Assign Cart States
+  const [showAutoAssignModal, setShowAutoAssignModal] = useState(false);
+  const [autoAssignCart, setAutoAssignCart] = useState<CartItem[]>([]);
+  const [selectedAutoShadeId, setSelectedAutoShadeId] = useState<string>('');
+  const [selectedAutoWeight, setSelectedAutoWeight] = useState<number>(10.5);
 
   useEffect(() => {
     fetchShades();
@@ -343,78 +357,91 @@ export default function AddDailyTask() {
     }
   };
 
-  const autoAssignTasks = async () => {
-    if (!shades || shades.length === 0) {
-      showAlert('Error', 'No shades available to assign.');
+  const addToCart = () => {
+    if (!selectedAutoShadeId) {
+      showAlert('Error', 'Please select a shade');
+      return;
+    }
+    const shade = shades.find(s => s.id === selectedAutoShadeId);
+    if (!shade) return;
+
+    setAutoAssignCart(prev => [
+      ...prev,
+      {
+        cartId: Date.now().toString() + Math.random(),
+        shadeId: shade.id,
+        shade_number: shade.shade_number,
+        weight: selectedAutoWeight,
+      }
+    ]);
+  };
+
+  const removeFromCart = (cartId: string) => {
+    setAutoAssignCart(prev => prev.filter(c => c.cartId !== cartId));
+  };
+
+  const clearCart = () => {
+    setAutoAssignCart([]);
+  };
+
+  const generateTasksFromCart = () => {
+    if (autoAssignCart.length === 0) {
+      showAlert('Error', 'Cart is empty. Add tasks first.');
       return;
     }
 
-    try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
-      const data = await response.json();
-      if (data && data.id) {
-        showAlert('Warning', 'Tasks already created for this date.');
-        return;
+    const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
+    MACHINES.forEach(m => {
+      newMachineTasks[m.id] = [];
+    });
+
+    const machineIndexForCapacity: { [cap: number]: number } = {};
+
+    for (const item of autoAssignCart) {
+      const weight = item.weight;
+      const matchingMachines = MACHINES.filter(m => m.capacity === weight);
+
+      if (matchingMachines.length > 0) {
+         if (machineIndexForCapacity[weight] === undefined) {
+           machineIndexForCapacity[weight] = 0;
+         }
+         
+         const totalSlotsForWeight = matchingMachines.length * 5; 
+         if (machineIndexForCapacity[weight] >= totalSlotsForWeight) {
+           showAlert('Error', `Too many ${weight}kg tasks. Max available rows is ${totalSlotsForWeight}.`);
+           return; 
+         }
+
+         const m = matchingMachines[machineIndexForCapacity[weight] % matchingMachines.length];
+         machineIndexForCapacity[weight]++;
+
+         newMachineTasks[m.id].push({
+           id: `${m.id}-auto-${Date.now()}-${item.cartId}`,
+           shadeId: item.shadeId,
+           shadeNumber: item.shade_number,
+           springs2ply: m.totalSprings.toString(), 
+           springs3ply: '0', 
+           showShadeDropdown: false,
+           shadeSearchText: item.shade_number,
+           error: ''
+         });
+      } else {
+         showAlert('Error', `No machine supports ${weight}kg capacity.`);
+         return;
       }
-    } catch (e) {
-      console.log('No existing tasks, proceeding...');
     }
 
-    setLoading(true);
-
-    try {
-      const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
-      MACHINES.forEach(m => {
-        newMachineTasks[m.id] = [];
-      });
-
-      const eligibleShades = shades.filter(s => s.original_weight);
-      const machineIndexForCapacity: { [cap: number]: number } = {};
-
-      eligibleShades.forEach((shade, i) => {
-        const weight = parseFloat(String(shade.original_weight));
-        const matchingMachines = MACHINES.filter(m => m.capacity === weight);
-
-        if (matchingMachines.length > 0) {
-           if (machineIndexForCapacity[weight] === undefined) {
-             machineIndexForCapacity[weight] = 0;
-           }
-           const m = matchingMachines[machineIndexForCapacity[weight] % matchingMachines.length];
-           machineIndexForCapacity[weight]++;
-
-           newMachineTasks[m.id].push({
-             id: `${m.id}-auto-${Date.now()}-${i}`,
-             shadeId: shade.id,
-             shadeNumber: String(shade.shade_number),
-             springs2ply: '',
-             springs3ply: '',
-             showShadeDropdown: false,
-             shadeSearchText: String(shade.shade_number),
-             error: ''
-           });
-        }
-      });
-
-      let maxLen = 5;
-      MACHINES.forEach(m => {
-         maxLen = Math.max(maxLen, newMachineTasks[m.id].length);
-      });
-
-      MACHINES.forEach(m => {
-        while (newMachineTasks[m.id].length < maxLen) {
-           newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
-        }
-      });
-      
-      setMachineTasks(newMachineTasks);
-      setSaveError('');
-      showAlert('Success', 'Tasks auto-assigned successfully!');
-    } catch (error) {
-      console.error(error);
-      showAlert('Error', 'Failed to auto-assign tasks.');
-    } finally {
-      setLoading(false);
-    }
+    MACHINES.forEach(m => {
+      while (newMachineTasks[m.id].length < 5) {
+         newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
+      }
+    });
+    
+    setMachineTasks(newMachineTasks);
+    setSaveError('');
+    setShowAutoAssignModal(false);
+    setAutoAssignCart([]);
+    showAlert('Success', 'Tasks generated successfully from cart!');
   };
 
   return (
@@ -441,7 +468,7 @@ export default function AddDailyTask() {
             </View>
             <TouchableOpacity 
               style={[styles.autoAssignButton, { backgroundColor: '#805AD5' }]}
-              onPress={autoAssignTasks}
+              onPress={() => setShowAutoAssignModal(true)}
               disabled={loading}
             >
               <Text style={styles.autoAssignButtonText}>👉 Auto Assign</Text>
@@ -499,6 +526,7 @@ export default function AddDailyTask() {
                   </View>
                   {MACHINES.map(machine => {
                     const task = machineTasks[machine.id][rowIndex];
+                    if (!task) return <View key={`${machine.id}-${rowIndex}`} style={[styles.gridCell, styles.placeholderCell]} />;
                     const isActive =
                       activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
                     const hasError = !!(task?.error);
@@ -703,6 +731,125 @@ export default function AddDailyTask() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <Modal
+        visible={showAutoAssignModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAutoAssignModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>🛒 Auto Assign Cart</Text>
+              <TouchableOpacity onPress={() => setShowAutoAssignModal(false)}>
+                <Text style={styles.closeModalText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScroll}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>1. Select Shade</Text>
+              <View style={[styles.selectionRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                {shades.length > 0 ? (
+                  <View style={styles.shadePickerWrap}>
+                    {Platform.OS === 'web' ? (
+                      <select
+                        style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
+                        value={selectedAutoShadeId}
+                        onChange={(e) => setSelectedAutoShadeId(e.target.value)}
+                      >
+                        <option value="">-- Select Shade --</option>
+                        {shades.map(s => (
+                          <option key={s.id} value={s.id}>#{s.shade_number}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <TextInput
+                         style={[styles.smallInput, { color: colors.text }]}
+                         placeholder="Select shade unavailable in native without picker"
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <Text style={{ color: colors.textSecondary }}>No shades available.</Text>
+                )}
+              </View>
+
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 15 }]}>2. Select Weight (kg)</Text>
+              <View style={styles.weightButtonsRow}>
+                {[6, 10.5, 12, 24].map((w) => (
+                  <TouchableOpacity
+                    key={w}
+                    style={[
+                      styles.weightSelectBtn,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      selectedAutoWeight === w && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    ]}
+                    onPress={() => setSelectedAutoWeight(w)}
+                  >
+                    <Text style={[
+                      styles.weightSelectText,
+                      { color: colors.text },
+                      selectedAutoWeight === w && { color: '#fff', fontWeight: 'bold' }
+                    ]}>{w} kg</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.addToCartBtn, { backgroundColor: colors.success }]}
+                onPress={addToCart}
+              >
+                <Text style={styles.addToCartBtnText}>+ Add to Cart</Text>
+              </TouchableOpacity>
+
+              <View style={[styles.cartDivider, { backgroundColor: colors.border }]} />
+              
+              <View style={styles.cartHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+                  Your Cart ({autoAssignCart.length})
+                </Text>
+                {autoAssignCart.length > 0 && (
+                  <TouchableOpacity onPress={clearCart}>
+                    <Text style={[styles.clearCartText, { color: colors.danger }]}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {autoAssignCart.length === 0 ? (
+                <Text style={[styles.emptyCartText, { color: colors.textSecondary }]}>
+                  No items in cart.
+                </Text>
+              ) : (
+                <View style={styles.cartList}>
+                  {autoAssignCart.map((item, idx) => (
+                    <View key={item.cartId} style={[styles.cartItem, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+                      <View style={styles.cartItemInfo}>
+                        <View style={[styles.cartShadeBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.cartShadeText}>#{item.shade_number}</Text>
+                        </View>
+                        <Text style={[styles.cartWeightText, { color: colors.textSecondary }]}>{item.weight} kg</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeFromCart(item.cartId)}>
+                        <Text style={[styles.removeCartText, { color: colors.danger }]}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.proceedBtn, { backgroundColor: colors.primary }]}
+                onPress={generateTasksFromCart}
+              >
+                <Text style={styles.proceedBtnText}>▶️ Proceed & Generate Tasks</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1008,6 +1155,170 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  placeholderCell: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    elevation: 0,
+    borderWidth: 0,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    width: '100%',
+    height: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  closeModalText: {
+    fontSize: 24,
+    color: '#666',
+    fontWeight: '300',
+  },
+  modalScroll: {
+    paddingBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  selectionRow: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  shadePickerWrap: {
+    backgroundColor: 'transparent',
+  },
+  webSelect: {
+    width: '100%',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 16,
+  },
+  smallInput: {
+    width: '100%',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 16,
+  },
+  weightButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 15,
+  },
+  weightSelectBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  weightSelectText: {
+    fontSize: 16,
+  },
+  addToCartBtn: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addToCartBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cartDivider: {
+    height: 1,
+    marginVertical: 20,
+  },
+  cartHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  clearCartText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyCartText: {
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  cartList: {
+    gap: 10,
+  },
+  cartItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cartItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  cartShadeBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  cartShadeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  cartWeightText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  removeCartText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    paddingHorizontal: 5,
+  },
+  modalFooter: {
+    paddingTop: 15,
+    borderTopWidth: 1,
+  },
+  proceedBtn: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  proceedBtnText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
