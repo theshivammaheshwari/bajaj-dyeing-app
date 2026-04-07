@@ -29,6 +29,7 @@ const MACHINES = [
 interface Shade {
   id: string;
   shade_number: string;
+  original_weight?: number;
 }
 
 interface MachineTaskData {
@@ -272,7 +273,7 @@ export default function AddDailyTask() {
       const tasks = machineTasks[machine.id];
       for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        if (task.shadeId && (task.springs2ply || task.springs3ply)) {
+        if (task.shadeId) {
           const ply2 = parseInt(task.springs2ply) || 0;
           const ply3 = parseInt(task.springs3ply) || 0;
           const total = ply2 + ply3;
@@ -296,7 +297,7 @@ export default function AddDailyTask() {
       const validTasks = [];
 
       for (const task of tasks) {
-        if (task.shadeId && (task.springs2ply || task.springs3ply)) {
+        if (task.shadeId) {
           const ply2 = parseInt(task.springs2ply) || 0;
           const ply3 = parseInt(task.springs3ply) || 0;
           validTasks.push({
@@ -342,6 +343,80 @@ export default function AddDailyTask() {
     }
   };
 
+  const autoAssignTasks = async () => {
+    if (!shades || shades.length === 0) {
+      showAlert('Error', 'No shades available to assign.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
+      const data = await response.json();
+      if (data && data.id) {
+        showAlert('Warning', 'Tasks already created for this date.');
+        return;
+      }
+    } catch (e) {
+      console.log('No existing tasks, proceeding...');
+    }
+
+    setLoading(true);
+
+    try {
+      const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
+      MACHINES.forEach(m => {
+        newMachineTasks[m.id] = [];
+      });
+
+      const eligibleShades = shades.filter(s => s.original_weight);
+      const machineIndexForCapacity: { [cap: number]: number } = {};
+
+      eligibleShades.forEach((shade, i) => {
+        const weight = parseFloat(String(shade.original_weight));
+        const matchingMachines = MACHINES.filter(m => m.capacity === weight);
+
+        if (matchingMachines.length > 0) {
+           if (machineIndexForCapacity[weight] === undefined) {
+             machineIndexForCapacity[weight] = 0;
+           }
+           const m = matchingMachines[machineIndexForCapacity[weight] % matchingMachines.length];
+           machineIndexForCapacity[weight]++;
+
+           newMachineTasks[m.id].push({
+             id: `${m.id}-auto-${Date.now()}-${i}`,
+             shadeId: shade.id,
+             shadeNumber: String(shade.shade_number),
+             springs2ply: '',
+             springs3ply: '',
+             showShadeDropdown: false,
+             shadeSearchText: String(shade.shade_number),
+             error: ''
+           });
+        }
+      });
+
+      let maxLen = 5;
+      MACHINES.forEach(m => {
+         maxLen = Math.max(maxLen, newMachineTasks[m.id].length);
+      });
+
+      MACHINES.forEach(m => {
+        while (newMachineTasks[m.id].length < maxLen) {
+           newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
+        }
+      });
+      
+      setMachineTasks(newMachineTasks);
+      setSaveError('');
+      showAlert('Success', 'Tasks auto-assigned successfully!');
+    } catch (error) {
+      console.error(error);
+      showAlert('Error', 'Failed to auto-assign tasks.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
@@ -354,14 +429,23 @@ export default function AddDailyTask() {
             <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>
-          <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <TextInput
-              style={[styles.dateInput, { color: colors.primary }]}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
+          <View style={[styles.headerActions]}>
+            <View style={[styles.dateInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.dateInput, { color: colors.primary }]}
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+            <TouchableOpacity 
+              style={[styles.autoAssignButton, { backgroundColor: '#805AD5' }]}
+              onPress={autoAssignTasks}
+              disabled={loading}
+            >
+              <Text style={styles.autoAssignButtonText}>👉 Auto Assign</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -647,18 +731,34 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dateInputContainer: {
-    borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minWidth: 120,
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
   },
   dateInput: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    paddingVertical: 6,
     textAlign: 'center',
+    minWidth: 90,
+  },
+  autoAssignButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  autoAssignButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   verticalScrollView: {
     flex: 1,

@@ -47,8 +47,7 @@ export default function DyeingMaster() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: { ply2: string; ply3: string } }>({});
-  const [activeTask, setActiveTask] = useState<{ machineId: string; taskIndex: number } | null>(null);
-
+  
   const handleLogout = async () => {
     const performLogout = async () => {
       await AsyncStorage.removeItem('isAuthenticated');
@@ -372,34 +371,22 @@ export default function DyeingMaster() {
                   {MACHINES.map(machine => {
                     const tasks = dailyTask?.[machine.id] || [];
                     const task = tasks[rowIndex];
-                    const isActive =
-                      activeTask?.machineId === machine.id && activeTask?.taskIndex === rowIndex;
-
                     return (
                       <View
                         key={machine.id}
                         style={[
                           styles.gridCell,
                           { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow },
-                          isActive && [styles.activeGridCell, { borderColor: colors.primary, borderWidth: 2 }],
                           task ? { backgroundColor: getStatusBg(task.status) } : null,
                         ]}
                       >
                         {task ? (
-                          <>
-                            <TouchableOpacity
-                              style={styles.cellHeader}
-                              onPress={() => router.push(`/shade-detail?shadeId=${task.shade_id}`)}
-                            >
+                          <View style={{ flex: 1, flexDirection: 'column' }}>
+                            <View style={styles.cellHeader}>
                               <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                                 #{task.shade_number}
                               </Text>
-                              <TouchableOpacity
-                                onPress={() =>
-                                  setActiveTask(isActive ? null : { machineId: machine.id, taskIndex: rowIndex })
-                                }
-                                style={styles.statusToggle}
-                              >
+                              <View style={styles.statusToggle}>
                                 <Text
                                   style={[
                                     styles.statusIndicator,
@@ -414,103 +401,96 @@ export default function DyeingMaster() {
                                     ? '●'
                                     : '○'}
                                 </Text>
-                              </TouchableOpacity>
-                            </TouchableOpacity>
+                              </View>
+                            </View>
 
-                            {isActive ? (
-                              <View style={styles.inlineEditor}>
-                                <View style={styles.weightInputsContainer}>
-                                  <View style={styles.weightInputWrap}>
-                                    <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>2P kg</Text>
-                                    <TextInput
-                                      style={[
-                                        styles.smallInput,
-                                        { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
-                                      ]}
-                                      value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
-                                      onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
-                                      onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
-                                      keyboardType="decimal-pad"
-                                      placeholder="0"
-                                      placeholderTextColor={colors.textSecondary}
-                                    />
-                                  </View>
-                                  <View style={styles.weightInputWrap}>
-                                    <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>3P kg</Text>
-                                    <TextInput
-                                      style={[
-                                        styles.smallInput,
-                                        { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
-                                      ]}
-                                      value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
-                                      onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
-                                      onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
-                                      keyboardType="decimal-pad"
-                                      placeholder="0"
-                                      placeholderTextColor={colors.textSecondary}
-                                    />
-                                  </View>
+                            <View style={styles.summaryWeights}>
+                              <Text style={[styles.summaryWeightText, { color: colors.text }]}>
+                                W: {(parseFloat(task.ply2_weight || '0') + parseFloat(task.ply3_weight || '0')).toFixed(2)}kg
+                              </Text>
+                              <Text style={[styles.summarySpringText, { color: colors.textSecondary }]}>
+                                S: {task.springs_2ply + task.springs_3ply}
+                              </Text>
+                            </View>
+
+                            <View style={styles.inlineEditor}>
+                              <View style={styles.weightInputsContainer}>
+                                <View style={styles.weightInputWrap}>
+                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>2P kg</Text>
+                                  <TextInput
+                                    style={[
+                                      styles.smallInput,
+                                      { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
+                                    ]}
+                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
+                                    onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
+                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0"
+                                    placeholderTextColor={colors.textSecondary}
+                                  />
                                 </View>
-
-                                <View style={styles.actionButtons}>
-                                  {task.status !== 'in-progress' &&
-                                    task.status !== 'completed' &&
-                                    task.status !== 'rejected' && (
-                                      <TouchableOpacity
-                                        style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
-                                        onPress={() => startTask(machine.id, rowIndex)}
-                                      >
-                                        <Text style={styles.actionButtonText}>Start</Text>
-                                      </TouchableOpacity>
-                                    )}
-                                  {task.status === 'in-progress' && (
-                                    <View style={styles.progressActions}>
-                                      <TouchableOpacity
-                                        style={[styles.smallActionButton, { backgroundColor: colors.success }]}
-                                        onPress={() => completeTask(machine.id, rowIndex)}
-                                      >
-                                        <Text style={styles.actionButtonText}>✓</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
-                                        onPress={() => rejectTask(machine.id, rowIndex)}
-                                      >
-                                        <Text style={styles.actionButtonText}>✕</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
-                                        onPress={() => revokeTask(machine.id, rowIndex, task.status)}
-                                      >
-                                        <Text style={styles.actionButtonText}>↺</Text>
-                                      </TouchableOpacity>
-                                    </View>
-                                  )}
-                                  {(task.status === 'completed' || task.status === 'rejected') && (
-                                    <TouchableOpacity
-                                      style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
-                                      onPress={() => revokeTask(machine.id, rowIndex, task.status)}
-                                    >
-                                      <Text style={styles.actionButtonText}>Reset</Text>
-                                    </TouchableOpacity>
-                                  )}
+                                <View style={styles.weightInputWrap}>
+                                  <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>3P kg</Text>
+                                  <TextInput
+                                    style={[
+                                      styles.smallInput,
+                                      { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
+                                    ]}
+                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
+                                    onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
+                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0"
+                                    placeholderTextColor={colors.textSecondary}
+                                  />
                                 </View>
                               </View>
-                            ) : (
-                              <TouchableOpacity
-                                style={styles.cellSummary}
-                                onPress={() => setActiveTask({ machineId: machine.id, taskIndex: rowIndex })}
-                              >
-                                <View style={styles.summaryWeights}>
-                                  <Text style={[styles.summaryWeightText, { color: colors.text }]}>
-                                    W: {(parseFloat(task.ply2_weight || 0) + parseFloat(task.ply3_weight || 0)).toFixed(2)}kg
-                                  </Text>
-                                  <Text style={[styles.summarySpringText, { color: colors.textSecondary }]}>
-                                    S: {task.springs_2ply + task.springs_3ply}
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                            )}
-                          </>
+
+                              <View style={styles.actionButtons}>
+                                {task.status !== 'in-progress' &&
+                                  task.status !== 'completed' &&
+                                  task.status !== 'rejected' && (
+                                    <TouchableOpacity
+                                      style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
+                                      onPress={() => startTask(machine.id, rowIndex)}
+                                    >
+                                      <Text style={styles.actionButtonText}>Start</Text>
+                                    </TouchableOpacity>
+                                  )}
+                                {task.status === 'in-progress' && (
+                                  <View style={styles.progressActions}>
+                                    <TouchableOpacity
+                                      style={[styles.smallActionButton, { backgroundColor: colors.success }]}
+                                      onPress={() => completeTask(machine.id, rowIndex)}
+                                    >
+                                      <Text style={styles.actionButtonText}>✓</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
+                                      onPress={() => rejectTask(machine.id, rowIndex)}
+                                    >
+                                      <Text style={styles.actionButtonText}>✕</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
+                                      onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                    >
+                                      <Text style={styles.actionButtonText}>↺</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
+                                {(task.status === 'completed' || task.status === 'rejected') && (
+                                  <TouchableOpacity
+                                    style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
+                                    onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                  >
+                                    <Text style={styles.actionButtonText}>Reset</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
+                          </View>
                         ) : (
                           <Text style={[styles.emptyCellText, { color: colors.textSecondary }]}>-</Text>
                         )}
