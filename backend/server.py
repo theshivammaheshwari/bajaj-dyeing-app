@@ -81,6 +81,24 @@ class AllMachinesCalculation(BaseModel):
     shade_number: str
     original_weight: float
     machines: dict  # {"6": [...], "10.5": [...], "12": [...], "24": [...]}
+    
+class CartDye(BaseModel):
+    dye_name: str
+    quantity: float
+
+class CartItemModel(BaseModel):
+    id: str
+    shadeNumber: str
+    programNumber: str
+    weight: float
+    rc: str
+    originalWeight: float
+    dyes: List[CartDye]
+
+class UserCart(BaseModel):
+    user_id: str
+    items: List[CartItemModel]
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 
 class MachineTask(BaseModel):
@@ -293,6 +311,41 @@ async def calculate_all_machines(shade_id: str):
             "original_weight": original_weight,
             "machines": machines_data
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Cart Sync Endpoints
+@api_router.get("/cart/{user_id}")
+async def get_cart(user_id: str):
+    """Retrieve cart for a specific user"""
+    try:
+        cart = await db.carts.find_one({"user_id": user_id})
+        if not cart:
+            return {"user_id": user_id, "items": []}
+        return {
+            "user_id": cart["user_id"], 
+            "items": cart.get("items", [])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.post("/cart/{user_id}")
+async def save_cart(user_id: str, items: List[CartItemModel]):
+    """Save/Sync cart for a specific user"""
+    try:
+        cart_dict = {
+            "user_id": user_id,
+            "items": [item.dict() for item in items],
+            "updated_at": datetime.utcnow()
+        }
+        await db.carts.update_one(
+            {"user_id": user_id},
+            {"$set": cart_dict},
+            upsert=True
+        )
+        return {"message": "Cart synced successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

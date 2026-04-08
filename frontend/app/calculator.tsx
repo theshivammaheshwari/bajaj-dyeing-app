@@ -63,35 +63,80 @@ export default function Calculator() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const CART_STORAGE_KEY = 'bajaj_recipe_cart';
 
-  // Load cart from AsyncStorage on mount
+  // Load user role and cart on mount
   useEffect(() => {
-    const loadCart = async () => {
+    const initData = async () => {
       try {
+        // 1. Get User Role
+        const role = await AsyncStorage.getItem('userRole');
+        setUserRole(role);
+
+        // 2. Load from Local Storage first
         const stored = await AsyncStorage.getItem(CART_STORAGE_KEY);
+        let initialCart = [];
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
+            initialCart = parsed;
             setCart(parsed);
           }
         }
+
+        // 3. Sync from Backend if logged in
+        if (role) {
+          try {
+            const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/cart/${role}`);
+            const data = await response.json();
+            if (data.items && Array.isArray(data.items)) {
+              // Merge or overwrite? User wants "same cart should appear", so overwrite
+              if (data.items.length > 0) {
+                setCart(data.items);
+                await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data.items));
+              }
+            }
+          } catch (e) {
+            console.error('Error syncing cart from backend:', e);
+          }
+        }
       } catch (e) {
-        console.error('Error loading cart:', e);
+        console.error('Error in initData:', e);
       }
     };
-    loadCart();
+    initData();
   }, []);
 
-  // Save cart to AsyncStorage whenever it changes
-  const saveCart = useCallback(async (updatedCart: CartItem[]) => {
+  // Save cart to AsyncStorage and Backend
+  const syncCart = useCallback(async (updatedCart: CartItem[]) => {
     try {
+      // Save locally
       await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+      
+      // Save to backend if user is logged in
+      if (userRole) {
+        setIsSyncing(true);
+        try {
+          await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/cart/${userRole}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedCart),
+          });
+        } catch (e) {
+          console.error('Error syncing to backend:', e);
+        } finally {
+          setIsSyncing(false);
+        }
+      }
     } catch (e) {
       console.error('Error saving cart:', e);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     if (shadeId) {
@@ -153,7 +198,7 @@ export default function Calculator() {
 
     setCart(prev => {
       const newCart = [...prev, cartItem];
-      saveCart(newCart);
+      syncCart(newCart);
       return newCart;
     });
     setAddedFeedback(true);
@@ -163,7 +208,7 @@ export default function Calculator() {
   const removeFromCart = (id: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== id);
-      saveCart(newCart);
+      syncCart(newCart);
       return newCart;
     });
   };
@@ -171,7 +216,7 @@ export default function Calculator() {
   const clearCart = () => {
     const doClear = () => {
       setCart([]);
-      saveCart([]);
+      syncCart([]);
     };
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Clear all items from cart?');
@@ -190,7 +235,14 @@ export default function Calculator() {
       return;
     }
 
-    // Build print HTML
+    // Group recipes into chunks of 10 for pagination
+    const itemsPerPage = 10;
+    const paginatedItems = [];
+    for (let i = 0; i < cart.length; i += itemsPerPage) {
+      paginatedItems.push(cart.slice(i, i + itemsPerPage));
+    }
+
+    // Build print HTML with pagination
     const printHTML = `
 <!DOCTYPE html>
 <html>
@@ -200,7 +252,7 @@ export default function Calculator() {
   <style>
     @page {
       size: A1 landscape;
-      margin: 20mm;
+      margin: 15mm;
     }
     * {
       box-sizing: border-box;
@@ -208,182 +260,202 @@ export default function Calculator() {
       padding: 0;
     }
     body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      color: #1B2A4A;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      color: #000;
       background: #fff;
-      padding: 24px;
+    }
+    .page {
+      page-break-after: always;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+    .page:last-child {
+      page-break-after: auto;
     }
     .print-header {
       text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #2B6CB0;
-      padding-bottom: 16px;
+      margin-bottom: 25px;
+      border-bottom: 4px solid #000;
+      padding-bottom: 15px;
     }
     .print-header h1 {
-      font-size: 36px;
-      color: #2B6CB0;
+      font-size: 48px;
+      color: #000;
+      font-weight: 900;
       margin-bottom: 4px;
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 4px;
     }
     .print-header p {
-      font-size: 16px;
-      color: #5A6B8A;
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
     }
     .recipes-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      justify-content: flex-start;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      flex-grow: 1;
     }
     .recipe-card {
-      border: 2px solid #C8D9EF;
-      border-radius: 12px;
+      border: 3px solid #000;
+      border-radius: 15px;
       padding: 20px;
-      width: calc(50% - 12px);
-      min-width: 400px;
-      background: #FAFCFF;
+      background: #fff;
       page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      height: auto;
     }
     .recipe-card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid #E6F0FA;
+      border-bottom: 2px solid #000;
       padding-bottom: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 15px;
     }
     .shade-title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #2B6CB0;
+      font-size: 32px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: 1px;
     }
     .badge {
       display: inline-block;
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-weight: 900;
+      font-size: 16px;
       color: #fff;
       margin-left: 8px;
+      border: 1px solid #000;
     }
     .badge-weight {
-      background: #2B6CB0;
+      background: #000;
     }
     .badge-program {
       background: #FF9800;
+      color: #000;
     }
     .badge-rc {
       background: #805AD5;
     }
     .recipe-info {
       display: flex;
-      gap: 20px;
-      margin-bottom: 12px;
-      font-size: 14px;
-      color: #5A6B8A;
+      gap: 25px;
+      margin-bottom: 15px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #000;
     }
     .recipe-info span {
-      font-weight: 600;
-      color: #1B2A4A;
+      font-weight: 900;
+      color: #000;
+      text-decoration: underline;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     th {
-      background: #E6F0FA;
-      color: #2B6CB0;
-      padding: 10px 14px;
+      background: #000;
+      color: #fff;
+      padding: 12px 15px;
       text-align: left;
-      font-size: 14px;
-      font-weight: 700;
-      border-bottom: 2px solid #C8D9EF;
+      font-size: 18px;
+      font-weight: 900;
     }
     th:last-child {
       text-align: right;
     }
     td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #E6F0FA;
-      font-size: 14px;
+      padding: 12px 15px;
+      border-bottom: 2px solid #EEE;
+      font-size: 18px;
+      font-weight: 700;
+      color: #000;
     }
     td:last-child {
       text-align: right;
-      font-weight: 700;
-      color: #2B6CB0;
-    }
-    td:first-child {
-      background: #F0F6FF;
-      font-weight: 600;
-      color: #2B6CB0;
-      border-radius: 4px;
-    }
-    tr:nth-child(even) td {
-      background: transparent;
-    }
-    tr:nth-child(even) td:first-child {
-      background: #F0F6FF;
+      font-weight: 900;
     }
     .print-footer {
-      margin-top: 30px;
+      margin-top: 20px;
       text-align: center;
-      border-top: 2px solid #C8D9EF;
-      padding-top: 16px;
-      color: #5A6B8A;
-      font-size: 12px;
+      border-top: 3px solid #000;
+      padding-top: 15px;
+      color: #333;
+      font-size: 16px;
+      font-weight: 600;
     }
-    .timestamp {
-      font-size: 11px;
-      margin-top: 6px;
+    .watermark {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      opacity: 0.5;
+    }
+    
+    /* Hide non-print elements */
+    @media screen {
+      .print-only { display: none; }
+    }
+    @media print {
+      .no-print { display: none; }
+      body { padding: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="print-header">
-    <h1>Bajaj Dyeing Unit</h1>
-    <p>Recipe Batch Print — ${cart.length} Recipe(s)</p>
-  </div>
-  <div class="recipes-grid">
-    ${cart.map(item => `
-      <div class="recipe-card">
-        <div class="recipe-card-header">
-          <div>
-            <span class="shade-title">Shade #${item.shadeNumber}</span>
-            <span class="badge badge-program">${item.programNumber}</span>
-            ${item.rc === 'Yes' ? '<span class="badge badge-rc">RC</span>' : ''}
-          </div>
-          <span class="badge badge-weight">${item.weight} kg</span>
-        </div>
-        <div class="recipe-info">
-          <div>Original: <span>${item.originalWeight} kg</span></div>
-          <div>Scaled to: <span>${item.weight} kg</span></div>
-          <div>Dyes: <span>${item.dyes.length}</span></div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Dye / Chemical</th>
-              <th>Quantity (gm)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${item.dyes.map(dye => `
-              <tr>
-                <td>${dye.dye_name}</td>
-                <td>${dye.quantity.toFixed(3)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+  ${paginatedItems.map((pageItems, pageIdx) => `
+    <div class="page">
+      <div class="print-header">
+        <h1>Bajaj Dyeing Unit</h1>
+        <p>Recipe Print — Page ${pageIdx + 1} of ${paginatedItems.length} (${cart.length} Total)</p>
       </div>
-    `).join('')}
-  </div>
-  <div class="print-footer">
-    <p>Generated on: ${new Date().toLocaleString()}</p>
-    <p class="timestamp">Bajaj Dyeing Unit — Confidential</p>
-  </div>
+      <div class="recipes-grid">
+        ${pageItems.map(item => `
+          <div class="recipe-card">
+            <div class="recipe-card-header">
+              <div>
+                <span class="shade-title">#${item.shadeNumber}</span>
+                <span class="badge badge-program">${item.programNumber}</span>
+                ${item.rc === 'Yes' ? '<span class="badge badge-rc">RC</span>' : ''}
+              </div>
+              <span class="badge badge-weight">${item.weight} kg</span>
+            </div>
+            <div class="recipe-info">
+              <div>Original: <span>${item.originalWeight} kg</span></div>
+              <div>Scaled to: <span>${item.weight} kg</span></div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Dye / Chemical</th>
+                  <th>QTY (gm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${item.dyes.map(dye => `
+                  <tr>
+                    <td>${dye.dye_name}</td>
+                    <td>${dye.quantity.toFixed(3)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+      </div>
+      <div class="print-footer">
+        <p>Generated on: ${new Date().toLocaleString()} | Bajaj Dyeing Confidential</p>
+      </div>
+    </div>
+  `).join('')}
 </body>
 </html>`;
 
@@ -453,7 +525,7 @@ export default function Calculator() {
         {/* Shade Info */}
         <View style={[styles.shadeInfoCard, { backgroundColor: colors.card, borderColor: colors.primary, shadowColor: colors.shadow }]}>
           <View style={styles.shadeHeader}>
-            <Text style={[styles.shadeNumber, { color: colors.primary }]}>Shade #{shade.shade_number}</Text>
+            <Text style={styles.shadeNumber}>Shade #{shade.shade_number}</Text>
             <View style={styles.badgeRow}>
               {shade.rc === 'Yes' && (
                 <View style={[styles.rcBadge]}>
@@ -774,9 +846,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   shadeNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '900',
     flex: 1,
+    color: '#000',
+    letterSpacing: 0.5,
   },
   badgeRow: {
     flexDirection: 'row',
