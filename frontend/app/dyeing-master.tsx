@@ -148,6 +148,16 @@ export default function DyeingMaster() {
         };
       });
     });
+
+    const autoTasks = task.automatic_tasks || [];
+    autoTasks.forEach((t: any, index: number) => {
+      const key = `automatic_tasks-${index}`;
+      inputs[key] = {
+        ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
+        ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
+      };
+    });
+
     setWeightInputs(inputs);
   };
 
@@ -395,7 +405,7 @@ export default function DyeingMaster() {
         >
           <View style={styles.gridContainer}>
             {/* Machine Header Row */}
-            <View style={styles.gridRow}>
+            <View style={[styles.gridRow, Platform.OS === 'web' && { position: 'sticky', top: 0, zIndex: 10, backgroundColor: colors.background, paddingBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 3 } as any]}>
               <View style={styles.rowNumberCell}>
                 <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
               </View>

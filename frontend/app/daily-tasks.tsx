@@ -205,7 +205,7 @@ export default function DailyTasks() {
         <ScrollView horizontal showsHorizontalScrollIndicator={true}>
           <View style={styles.gridContainer}>
             {/* Machine Header Row */}
-            <View style={styles.gridRow}>
+            <View style={[styles.gridRow, Platform.OS === 'web' && { position: 'sticky', top: 0, zIndex: 10, backgroundColor: colors.background, paddingBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 3 } as any]}>
               <View style={styles.rowNumberCell}>
                 <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
               </View>
