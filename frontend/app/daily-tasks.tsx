@@ -44,6 +44,7 @@ interface DailyTask {
   m3?: MachineTask[];
   m4?: MachineTask[];
   m5?: MachineTask[];
+  automatic_tasks?: MachineTask[];
 }
 
 export default function DailyTasks() {
@@ -52,6 +53,7 @@ export default function DailyTasks() {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
+  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'manual' | 'automatic'>('all');
 
   useEffect(() => {
     fetchTasks();
@@ -138,9 +140,23 @@ export default function DailyTasks() {
     }
   };
 
+  const getMachineTasks = (task: DailyTask, machineId: string) => {
+    const autoTasks = (task.automatic_tasks || []) as any[];
+    const manualTasks = (task[machineId as keyof DailyTask] || []) as any[];
+    
+    let combined: any[] = [];
+    if (taskTypeFilter === 'all' || taskTypeFilter === 'manual') {
+      combined = [...combined, ...manualTasks];
+    }
+    if (taskTypeFilter === 'all' || taskTypeFilter === 'automatic') {
+      combined = [...combined, ...autoTasks.filter(t => t.machine === machineId)];
+    }
+    return combined;
+  };
+
   const getMaxRows = (task: DailyTask) => {
     return Math.max(
-      ...(MACHINES.map(m => (task[m.id as keyof DailyTask] as MachineTask[] || []).length)),
+      ...(MACHINES.map(m => getMachineTasks(task, m.id).length)),
       1
     );
   };
@@ -215,7 +231,7 @@ export default function DailyTasks() {
                   <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
                 </View>
                 {MACHINES.map(machine => {
-                  const machineTasks = (task[machine.id as keyof DailyTask] as MachineTask[]) || [];
+                  const machineTasks = getMachineTasks(task, machine.id);
                   const mt = machineTasks[rowIndex];
 
                   return (
@@ -233,6 +249,24 @@ export default function DailyTasks() {
                             <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                               #{mt.shade_number}
                             </Text>
+                            <View 
+                              style={{ 
+                                backgroundColor: mt.type === 'automatic' ? colors.success + '20' : colors.primary + '20', 
+                                paddingHorizontal: 6, 
+                                paddingVertical: 2, 
+                                borderRadius: 4 
+                              }}
+                            >
+                              <Text 
+                                style={{ 
+                                  fontSize: 10, 
+                                  fontWeight: 'bold', 
+                                  color: mt.type === 'automatic' ? colors.success : colors.primary 
+                                }}
+                              >
+                                {mt.type === 'automatic' ? 'Auto' : 'Manual'}
+                              </Text>
+                            </View>
                           </View>
                           <View style={styles.cellSummary}>
                             <View style={styles.summaryPlyRow}>
@@ -276,6 +310,28 @@ export default function DailyTasks() {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Daily Machine Tasks</Text>
         </View>
+
+        <View style={{ flexDirection: 'row', paddingHorizontal: 20, marginBottom: 15, gap: 10 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: taskTypeFilter === 'all' ? colors.primary : colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setTaskTypeFilter('all')}
+          >
+            <Text style={{ textAlign: 'center', fontWeight: '600', color: taskTypeFilter === 'all' ? '#fff' : colors.text }}>Show All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: taskTypeFilter === 'manual' ? colors.primary : colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setTaskTypeFilter('manual')}
+          >
+            <Text style={{ textAlign: 'center', fontWeight: '600', color: taskTypeFilter === 'manual' ? '#fff' : colors.text }}>Manual Only</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: taskTypeFilter === 'automatic' ? colors.primary : colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setTaskTypeFilter('automatic')}
+          >
+            <Text style={{ textAlign: 'center', fontWeight: '600', color: taskTypeFilter === 'automatic' ? '#fff' : colors.text }}>Auto Only</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={[styles.dateFilterContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
           <TextInput
             style={[styles.dateFilterInput, { color: colors.text }]}

@@ -437,8 +437,12 @@ async def generate_daily_task_pdf(task_id: str):
         elements.append(Spacer(1, 20))
         
         # Machine tasks
+        automatic_tasks = task.get("automatic_tasks", [])
+
         for machine_key in ['m1', 'm2', 'm3', 'm4', 'm5']:
             machine_tasks = task.get(machine_key, [])
+            auto_for_machine = [t for t in automatic_tasks if t.get("machine") == machine_key]
+            combined_tasks = machine_tasks + auto_for_machine
             info = machine_info[machine_key]
             
             elements.append(Paragraph(
@@ -446,23 +450,25 @@ async def generate_daily_task_pdf(task_id: str):
                 machine_style
             ))
             
-            if not machine_tasks:
+            if not combined_tasks:
                 elements.append(Paragraph("No tasks assigned", styles['Normal']))
             else:
                 # Table data
-                table_data = [['#', 'Shade', '2PLY', '3PLY', 'Total', 'Status']]
-                for idx, t in enumerate(machine_tasks):
+                table_data = [['#', 'Shade', 'Type', '2PLY', '3PLY', 'Total', 'Status']]
+                for idx, t in enumerate(combined_tasks):
                     status = t.get('status', 'pending').upper()
+                    m_type = t.get('type', 'manual')
                     table_data.append([
                         str(idx + 1),
                         f"#{t.get('shade_number', 'N/A')}",
+                        "Auto" if m_type == "automatic" else "Man",
                         str(t.get('springs_2ply', 0)),
                         str(t.get('springs_3ply', 0)),
                         str(t.get('springs_2ply', 0) + t.get('springs_3ply', 0)),
                         status
                     ])
                 
-                table = Table(table_data, colWidths=[30, 80, 50, 50, 50, 80])
+                table = Table(table_data, colWidths=[30, 60, 40, 40, 40, 40, 70])
                 table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.darkgreen),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -512,13 +518,17 @@ async def get_whatsapp_text(task_id: str):
         message += f"📅 *Date:* {task['date']}\n"
         message += "─" * 25 + "\n\n"
         
+        automatic_tasks = task.get("automatic_tasks", [])
+
         for machine_key in ['m1', 'm2', 'm3', 'm4', 'm5']:
             machine_tasks = task.get(machine_key, [])
+            auto_for_machine = [t for t in automatic_tasks if t.get("machine") == machine_key]
+            combined_tasks = machine_tasks + auto_for_machine
             info = machine_info[machine_key]
             
-            if machine_tasks:
+            if combined_tasks:
                 message += f"🏭 *{info['name']}* ({info['capacity']}kg)\n"
-                for idx, t in enumerate(machine_tasks):
+                for idx, t in enumerate(combined_tasks):
                     shade = t.get('shade_number', 'N/A')
                     ply2 = t.get('springs_2ply', 0)
                     ply3 = t.get('springs_3ply', 0)
@@ -605,9 +615,14 @@ async def calculate_payment(task_id: str, rate_per_kg: float = 6.75):
         completed_tasks = 0
         rejected_tasks = 0
         
+        automatic_tasks = daily_task.get("automatic_tasks", [])
+
         for machine_id, capacity in machine_capacities.items():
             tasks = daily_task.get(machine_id, [])
-            for task in tasks:
+            auto_for_machine = [t for t in automatic_tasks if t.get("machine") == machine_id]
+            combined_tasks = tasks + auto_for_machine
+            
+            for task in combined_tasks:
                 if task.get('status') == 'completed':
                     # Add machine capacity for each completed task (full rate)
                     completed_kg += capacity
@@ -656,6 +671,7 @@ async def rollover_pending_tasks(from_date: str, to_date: str):
         machines = ['m1', 'm2', 'm3', 'm4', 'm5']
         moved_count = 0
         
+        # 1. Rollover Manual Tasks
         for machine_id in machines:
             source_tasks = from_task.get(machine_id, [])
             # Get only pending tasks
@@ -688,6 +704,33 @@ async def rollover_pending_tasks(from_date: str, to_date: str):
                     {"_id": from_task["_id"]},
                     {"$set": {machine_id: remaining_tasks}}
                 )
+
+        # 2. Rollover Automatic Tasks
+        source_auto_tasks = from_task.get("automatic_tasks", [])
+        pending_auto_tasks = [t for t in source_auto_tasks if t.get('status', 'pending') == 'pending']
+        if pending_auto_tasks:
+            if to_task:
+                existing_auto = to_task.get("automatic_tasks", [])
+                updated_auto = pending_auto_tasks + existing_auto
+                await db.daily_tasks.update_one(
+                    {"_id": to_task["_id"]},
+                    {"$set": {"automatic_tasks": updated_auto}}
+                )
+            else:
+                new_task = {
+                    "date": to_date,
+                    "created_at": datetime.utcnow(),
+                    "automatic_tasks": pending_auto_tasks
+                }
+                result = await db.daily_tasks.insert_one(new_task)
+                to_task = await db.daily_tasks.find_one({"_id": result.inserted_id})
+            
+            moved_count += len(pending_auto_tasks)
+            remaining_auto = [t for t in source_auto_tasks if t.get('status', 'pending') != 'pending']
+            await db.daily_tasks.update_one(
+                {"_id": from_task["_id"]},
+                {"$set": {"automatic_tasks": remaining_auto}}
+            )
         
         return {
             "message": f"Moved {moved_count} pending tasks from {from_date} to {to_date}",

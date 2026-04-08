@@ -160,17 +160,13 @@ export default function DyeingMaster() {
 
     try {
       setLoading(true);
-      const targetMachineTasks = [...(dailyTask[machineId] || [])];
       
       const newAutoTasks = [...(dailyTask.automatic_tasks || [])];
-      const taskToAssign = newAutoTasks[taskIndex];
-      newAutoTasks.splice(taskIndex, 1);
-      
-      targetMachineTasks.push({
-        ...taskToAssign,
-        type: 'automatic',
+      newAutoTasks[taskIndex] = {
+        ...newAutoTasks[taskIndex],
+        machine: machineId,
         status: 'pending'
-      });
+      };
 
       const payload = {
         date,
@@ -180,7 +176,6 @@ export default function DyeingMaster() {
         m4: dailyTask.m4 || [],
         m5: dailyTask.m5 || [],
         automatic_tasks: newAutoTasks,
-        [machineId]: targetMachineTasks
       };
 
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}`, {
@@ -385,9 +380,6 @@ export default function DyeingMaster() {
           <Text style={[styles.tabBtnText, activeTab === 'automatic' ? { color: '#fff' } : { color: colors.text }]}>Automatic Tasks</Text>
         </TouchableOpacity>
       </View>
-
-      {activeTab === 'manual' ? (
-      <>
       <ScrollView
         style={styles.verticalScrollView}
         contentContainerStyle={styles.verticalScrollContent}
@@ -408,7 +400,10 @@ export default function DyeingMaster() {
                 <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>#</Text>
               </View>
               {MACHINES.map(machine => {
-                const tasks = dailyTask?.[machine.id] || [];
+                const tasks = activeTab === 'manual'
+                  ? (dailyTask?.[machine.id] || [])
+                  : (dailyTask?.automatic_tasks || []).filter((t: any) => t.machine === machine.id);
+                
                 const totalSpringsUsed = tasks.reduce(
                   (sum: number, task: any) => sum + (task.springs_2ply || 0) + (task.springs_3ply || 0),
                   0
@@ -435,14 +430,19 @@ export default function DyeingMaster() {
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks found for {date}</Text>
               </View>
             ) : (
-              Array.from({ length: 5 }).map((_, rowIndex) => (
+              Array.from({ length: activeTab === 'manual' ? 5 : Math.max(...MACHINES.map(m => (dailyTask.automatic_tasks || []).filter((t:any) => t.machine === m.id).length), 1) }).map((_, rowIndex) => (
                 <View key={rowIndex} style={styles.gridRow}>
                   <View style={styles.rowNumberCell}>
                     <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
                   </View>
                   {MACHINES.map(machine => {
-                    const tasks = dailyTask?.[machine.id] || [];
+                    const tasks = activeTab === 'manual'
+                      ? (dailyTask?.[machine.id] || [])
+                      : (dailyTask?.automatic_tasks || []).map((t: any, idx: number) => ({...t, originalIndex: idx})).filter((t: any) => t.machine === machine.id);
                     const task = tasks[rowIndex];
+                    const targetMachineForApi = activeTab === 'manual' ? machine.id : 'automatic_tasks';
+                    const targetIndexForApi = activeTab === 'manual' ? rowIndex : (task ? task.originalIndex : 0);
+                    const weightInputKey = `${targetMachineForApi}-${targetIndexForApi}`;
                     return (
                       <View
                         key={machine.id}
@@ -494,9 +494,9 @@ export default function DyeingMaster() {
                                       styles.smallInput,
                                       { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
                                     ]}
-                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply2 || ''}
-                                    onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply2', val)}
-                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply2')}
+                                    value={weightInputs[weightInputKey]?.ply2 || ''}
+                                    onChangeText={val => updateLocalWeight(targetMachineForApi, targetIndexForApi, 'ply2', val)}
+                                    onBlur={() => saveWeight(targetMachineForApi, targetIndexForApi, 'ply2')}
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
@@ -509,9 +509,9 @@ export default function DyeingMaster() {
                                       styles.smallInput,
                                       { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
                                     ]}
-                                    value={weightInputs[`${machine.id}-${rowIndex}`]?.ply3 || ''}
-                                    onChangeText={val => updateLocalWeight(machine.id, rowIndex, 'ply3', val)}
-                                    onBlur={() => saveWeight(machine.id, rowIndex, 'ply3')}
+                                    value={weightInputs[weightInputKey]?.ply3 || ''}
+                                    onChangeText={val => updateLocalWeight(targetMachineForApi, targetIndexForApi, 'ply3', val)}
+                                    onBlur={() => saveWeight(targetMachineForApi, targetIndexForApi, 'ply3')}
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
@@ -525,7 +525,7 @@ export default function DyeingMaster() {
                                   task.status !== 'rejected' && (
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
-                                      onPress={() => startTask(machine.id, rowIndex)}
+                                      onPress={() => startTask(targetMachineForApi, targetIndexForApi)}
                                     >
                                       <Text style={styles.actionButtonText}>Start</Text>
                                     </TouchableOpacity>
@@ -534,19 +534,19 @@ export default function DyeingMaster() {
                                   <View style={styles.progressActions}>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.success }]}
-                                      onPress={() => completeTask(machine.id, rowIndex)}
+                                      onPress={() => completeTask(targetMachineForApi, targetIndexForApi)}
                                     >
                                       <Text style={styles.actionButtonText}>✓</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
-                                      onPress={() => rejectTask(machine.id, rowIndex)}
+                                      onPress={() => rejectTask(targetMachineForApi, targetIndexForApi)}
                                     >
                                       <Text style={styles.actionButtonText}>✕</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
-                                      onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                      onPress={() => revokeTask(targetMachineForApi, targetIndexForApi, task.status)}
                                     >
                                       <Text style={styles.actionButtonText}>↺</Text>
                                     </TouchableOpacity>
@@ -555,7 +555,7 @@ export default function DyeingMaster() {
                                 {(task.status === 'completed' || task.status === 'rejected') && (
                                   <TouchableOpacity
                                     style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
-                                    onPress={() => revokeTask(machine.id, rowIndex, task.status)}
+                                    onPress={() => revokeTask(targetMachineForApi, targetIndexForApi, task.status)}
                                   >
                                     <Text style={styles.actionButtonText}>Reset</Text>
                                   </TouchableOpacity>
@@ -598,14 +598,16 @@ export default function DyeingMaster() {
           </View>
         </ScrollView>
       </ScrollView>
-      </>
-      ) : (
-      <>
-        <ScrollView style={{ padding: 15 }}>
-          {!dailyTask?.automatic_tasks || dailyTask.automatic_tasks.length === 0 ? (
-            <Text style={{ textAlign: 'center', marginTop: 20, color: colors.textSecondary }}>No Automatic Tasks Available</Text>
+      {/* If Tab is manual, that's it! Render is over. If Automatic, we also need the Unassigned tasks floating above the grid! */}
+      {activeTab === 'automatic' && (
+        <ScrollView style={{ paddingHorizontal: 15, paddingTop: 10, maxHeight: 250 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10, color: colors.text }}>⚡ Unassigned Automatic Tasks</Text>
+          {!dailyTask?.automatic_tasks || dailyTask.automatic_tasks.filter((t:any) => !t.machine).length === 0 ? (
+            <Text style={{ textAlign: 'center', marginBottom: 20, color: colors.textSecondary }}>No Unassigned Tasks</Text>
           ) : (
-            dailyTask.automatic_tasks.map((task: any, index: number) => (
+            dailyTask.automatic_tasks.map((task: any, index: number) => {
+              if (task.machine) return null;
+              return (
               <View key={index} style={{ backgroundColor: colors.card, padding: 15, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: colors.border }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
                   <Text style={{ fontWeight: 'bold', fontSize: 16, color: colors.text }}>Shade #{task.shade_number}</Text>
@@ -652,10 +654,9 @@ export default function DyeingMaster() {
                   </TouchableOpacity>
                 </View>
               </View>
-            ))
+            )})
           )}
         </ScrollView>
-      </>
       )}
     </SafeAreaView>
   );
