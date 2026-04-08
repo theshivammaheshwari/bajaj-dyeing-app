@@ -83,9 +83,11 @@ export default function AddDailyTask() {
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
   const [saveError, setSaveError] = useState('');
   
+  const [activeTab, setActiveTab] = useState<'manual' | 'automatic'>('manual');
+  
   // Auto Assign Editable Rows
-  const [showAutoAssignModal, setShowAutoAssignModal] = useState(false);
   const [autoAssignRows, setAutoAssignRows] = useState<AutoAssignRow[]>([]);
+  const [existingAutomaticTasks, setExistingAutomaticTasks] = useState<any[]>([]);
 
   useEffect(() => {
     fetchShades();
@@ -118,9 +120,11 @@ export default function AddDailyTask() {
           }
         });
         setMachineTasks(newMachineTasks);
+        setExistingAutomaticTasks(data.automatic_tasks || []);
       } else {
         console.log('No tasks found for this date, resetting grid');
         setMachineTasks(initialMachineTasks());
+        setExistingAutomaticTasks([]);
       }
     } catch (error) {
       console.error('Error fetching existing task:', error);
@@ -331,10 +335,12 @@ export default function AddDailyTask() {
       }
     }
 
-    if (!hasData) {
+    if (!hasData && existingAutomaticTasks.length === 0) {
       setSaveError('Please add at least one task');
       return;
     }
+
+    payload.automatic_tasks = existingAutomaticTasks;
 
     setLoading(true);
     try {
@@ -358,7 +364,7 @@ export default function AddDailyTask() {
     }
   };
 
-  const handleAssignTasks = () => {
+  const handleAssignTasks = async () => {
     if (autoAssignRows.length === 0) {
       showAlert('Error', 'No tasks to assign.');
       return;
@@ -367,64 +373,64 @@ export default function AddDailyTask() {
     // 1. Validation
     for (let i = 0; i < autoAssignRows.length; i++) {
       const row = autoAssignRows[i];
-      if (!row.shadeId || !row.weight || !row.machineId || !row.springs2ply || !row.springs3ply) {
+      if (!row.shadeId || !row.weight || !row.springs2ply || !row.springs3ply) {
         showAlert('Error', `Row ${i + 1} has empty fields. Please fill all fields.`);
         return;
       }
-      
-      const machine = MACHINES.find(m => m.id === row.machineId);
-      if (!machine) {
-        showAlert('Error', `Invalid machine in Row ${i + 1}`);
-        return;
-      }
-
       const ply2 = parseInt(row.springs2ply) || 0;
       const ply3 = parseInt(row.springs3ply) || 0;
       if (ply2 < 0 || ply3 < 0) {
         showAlert('Error', `Row ${i + 1}: Values cannot be negative.`);
         return;
       }
-      if (ply2 + ply3 > machine.totalSprings) {
-        showAlert('Error', `Row ${i + 1}: Total springs (${ply2 + ply3}) exceeds ${machine.name} capacity (${machine.totalSprings})`);
-        return;
-      }
     }
 
-    // 2. Insert logic
-    setMachineTasks(prev => {
-      const nextTasks = { ...prev };
-      
-      for (const row of autoAssignRows) {
-        const targetMachineTasks = [...nextTasks[row.machineId]];
-        
-        // Find empty slot (shadeId === '')
-        const emptyIndex = targetMachineTasks.findIndex(t => t.shadeId === '');
-        
-        const newTask: MachineTaskData = {
-          id: `${row.machineId}-assigned-${Date.now()}-${Math.random()}`,
-          shadeId: row.shadeId,
-          shadeNumber: row.shadeNumber,
-          springs2ply: row.springs2ply,
-          springs3ply: row.springs3ply,
-          showShadeDropdown: false,
-          shadeSearchText: row.shadeNumber,
-          error: ''
-        };
+    setLoading(true);
+    try {
+      // Fetch latest tasks for this date to prevent overriding manual tracking
+      const getRes = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
+      const data = await getRes.json();
 
-        if (emptyIndex !== -1) {
-          targetMachineTasks[emptyIndex] = newTask;
-        } else {
-          targetMachineTasks.push(newTask);
-        }
-        
-        nextTasks[row.machineId] = targetMachineTasks;
+      const newAutoTasks = autoAssignRows.map(row => ({
+        shade_id: row.shadeId,
+        shade_number: row.shadeNumber,
+        springs_2ply: parseInt(row.springs2ply) || 0,
+        springs_3ply: parseInt(row.springs3ply) || 0,
+        weight: row.weight,
+        type: 'automatic',
+        machine: null
+      }));
+
+      const payload = {
+        date,
+        m1: data.m1 || [],
+        m2: data.m2 || [],
+        m3: data.m3 || [],
+        m4: data.m4 || [],
+        m5: data.m5 || [],
+        automatic_tasks: [...(data.automatic_tasks || []), ...newAutoTasks]
+      };
+
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setAutoAssignRows([]);
+        showAlert('Success', 'Tasks saved as Automatic and sent to Dyeing Master!');
+        fetchExistingTask();
+      } else {
+        const error = await response.json();
+        showAlert('Error', error.detail || 'Failed to save tasks');
       }
-      return nextTasks;
-    });
-
-    setAutoAssignRows([]);
-    setShowAutoAssignModal(false);
-    showAlert('Success', 'Tasks accurately assigned to grid!');
+    } catch (error) {
+      console.error('Error adding automatic tasks:', error);
+      showAlert('Error', 'Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addAutoAssignRow = () => {
@@ -461,8 +467,9 @@ export default function AddDailyTask() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.headerBackground} />
       <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -479,16 +486,26 @@ export default function AddDailyTask() {
                 placeholderTextColor={colors.textSecondary}
               />
             </View>
-            <TouchableOpacity 
-              style={[styles.autoAssignButton, { backgroundColor: '#805AD5' }]}
-              onPress={() => setShowAutoAssignModal(true)}
-              disabled={loading}
-            >
-              <Text style={styles.autoAssignButtonText}>👉 Auto Assign</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
+        <View style={{ flexDirection: 'row', gap: 10, padding: 15, paddingBottom: 0 }}>
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'manual' ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setActiveTab('manual')}
+          >
+            <Text style={[styles.tabBtnText, activeTab === 'manual' ? { color: '#fff' } : { color: colors.text }]}>Manual Tasks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'automatic' ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setActiveTab('automatic')}
+          >
+            <Text style={[styles.tabBtnText, activeTab === 'automatic' ? { color: '#fff' } : { color: colors.text }]}>Automatic Tasks</Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'manual' ? (
+        <>
         <ScrollView
           style={styles.verticalScrollView}
           contentContainerStyle={styles.verticalScrollContent}
@@ -743,149 +760,123 @@ export default function AddDailyTask() {
             <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save All Tasks'}</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-      <Modal
-        visible={showAutoAssignModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAutoAssignModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>📋 Auto Assign Editor</Text>
-              <TouchableOpacity onPress={() => setShowAutoAssignModal(false)}>
-                <Text style={styles.closeModalText}>✕</Text>
-              </TouchableOpacity>
-            </View>
+        </>
+        ) : (
+        <>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingHorizontal: 15, paddingTop: 10 }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>📋 Automatic Tasks Editor</Text>
+          </View>
 
-            <ScrollView contentContainerStyle={styles.modalScroll}>
-              {autoAssignRows.length === 0 ? (
-                <Text style={[styles.emptyCartText, { color: colors.textSecondary }]}>
-                  No tasks added yet. Click "+ Add Task Row" below.
-                </Text>
-              ) : (
-                autoAssignRows.map((row, index) => (
-                  <View key={row.id} style={[styles.selectionRow, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 10 }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <Text style={{ fontWeight: 'bold', color: colors.text }}>Task #{index + 1}</Text>
-                      <TouchableOpacity onPress={() => removeAutoAssignRow(row.id)}>
-                        <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕ Remove</Text>
-                      </TouchableOpacity>
-                    </View>
-                    
-                    {/* Select Shade */}
-                    <View style={{ marginBottom: 10 }}>
-                      <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Shade</Text>
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            {autoAssignRows.length === 0 ? (
+              <Text style={[styles.emptyCartText, { color: colors.textSecondary }]}>
+                No tasks added yet. Click "+ Add Task Row" below.
+              </Text>
+            ) : (
+              autoAssignRows.map((row, index) => (
+                <View key={row.id} style={[styles.selectionRow, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 10 }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <Text style={{ fontWeight: 'bold', color: colors.text }}>Task #{index + 1}</Text>
+                    <TouchableOpacity onPress={() => removeAutoAssignRow(row.id)}>
+                      <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕ Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Select Shade */}
+                  <View style={{ marginBottom: 10 }}>
+                    <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Shade</Text>
+                    {Platform.OS === 'web' ? (
+                      <select
+                        style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
+                        value={row.shadeId}
+                        onChange={(e) => updateAutoAssignRow(row.id, 'shadeId', e.target.value)}
+                      >
+                        <option value="">-- Select Shade --</option>
+                        {shades.map(s => (
+                          <option key={s.id} value={s.id}>#{s.shade_number}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <TextInput
+                         style={[styles.smallInput, { color: colors.text, borderColor: colors.border }]}
+                         placeholder="Native dropdown placeholder"
+                      />
+                    )}
+                  </View>
+
+                  {/* Weight Row (No Machine) */}
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Weight</Text>
                       {Platform.OS === 'web' ? (
                         <select
                           style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
-                          value={row.shadeId}
-                          onChange={(e) => updateAutoAssignRow(row.id, 'shadeId', e.target.value)}
+                          value={row.weight.toString()}
+                          onChange={(e) => updateAutoAssignRow(row.id, 'weight', e.target.value ? Number(e.target.value) : '')}
                         >
-                          <option value="">-- Select Shade --</option>
-                          {shades.map(s => (
-                            <option key={s.id} value={s.id}>#{s.shade_number}</option>
+                          <option value="">Weight</option>
+                          {[6, 10.5, 12, 24].map(w => (
+                            <option key={w} value={w}>{w} kg</option>
                           ))}
                         </select>
-                      ) : (
-                        <TextInput
-                           style={[styles.smallInput, { color: colors.text, borderColor: colors.border }]}
-                           placeholder="Native dropdown placeholder"
-                        />
-                      )}
-                    </View>
-
-                    {/* Weight & Machine Row */}
-                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Weight</Text>
-                        {Platform.OS === 'web' ? (
-                          <select
-                            style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
-                            value={row.weight.toString()}
-                            onChange={(e) => updateAutoAssignRow(row.id, 'weight', e.target.value ? Number(e.target.value) : '')}
-                          >
-                            <option value="">Weight</option>
-                            {[6, 10.5, 12, 24].map(w => (
-                              <option key={w} value={w}>{w} kg</option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Machine</Text>
-                        {Platform.OS === 'web' ? (
-                          <select
-                            style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
-                            value={row.machineId}
-                            onChange={(e) => updateAutoAssignRow(row.id, 'machineId', e.target.value)}
-                          >
-                            <option value="">Machine</option>
-                            {MACHINES.map(m => (
-                              <option key={m.id} value={m.id}>{m.name} ({m.totalSprings} max)</option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </View>
-                    </View>
-
-                    {/* 2P & 3P Inputs Row */}
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>2P Springs</Text>
-                        <TextInput
-                          style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
-                          keyboardType="numeric"
-                          value={row.springs2ply}
-                          onChangeText={(v) => updateAutoAssignRow(row.id, 'springs2ply', v)}
-                          placeholder="0"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>3P Springs</Text>
-                        <TextInput
-                          style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
-                          keyboardType="numeric"
-                          value={row.springs3ply}
-                          onChangeText={(v) => updateAutoAssignRow(row.id, 'springs3ply', v)}
-                          placeholder="0"
-                        />
-                      </View>
+                      ) : null}
                     </View>
                   </View>
-                ))
-              )}
 
-              <TouchableOpacity 
-                style={[styles.gridAddRowButton, { borderColor: colors.primary, marginTop: 15 }]} 
-                onPress={addAutoAssignRow}
-              >
-                <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add Line Item</Text>
-              </TouchableOpacity>
-            </ScrollView>
+                  {/* 2P & 3P Inputs Row */}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>2P Springs</Text>
+                      <TextInput
+                        style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
+                        keyboardType="numeric"
+                        value={row.springs2ply}
+                        onChangeText={(v) => updateAutoAssignRow(row.id, 'springs2ply', v)}
+                        placeholder="0"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>3P Springs</Text>
+                      <TextInput
+                        style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
+                        keyboardType="numeric"
+                        value={row.springs3ply}
+                        onChangeText={(v) => updateAutoAssignRow(row.id, 'springs3ply', v)}
+                        placeholder="0"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))
+            )}
 
-            <View style={[styles.modalFooter, { borderTopColor: colors.border, flexDirection: 'row', gap: 10 }]}>
-              <TouchableOpacity
-                style={[styles.proceedBtn, { backgroundColor: colors.card, flex: 1, borderWidth: 1, borderColor: colors.border }]}
-                onPress={() => {
-                  setAutoAssignRows([]);
-                  setShowAutoAssignModal(false);
-                }}
-              >
-                <Text style={[styles.proceedBtnText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.proceedBtn, { backgroundColor: colors.primary, flex: 2 }]}
-                onPress={handleAssignTasks}
-              >
-                <Text style={styles.proceedBtnText}>👉 Assign Tasks</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity 
+              style={[styles.gridAddRowButton, { borderColor: colors.primary, marginTop: 15 }]} 
+              onPress={addAutoAssignRow}
+            >
+              <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add Line Item</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          <View style={[styles.modalFooter, { borderTopColor: colors.border, flexDirection: 'row', gap: 10 }]}>
+            <TouchableOpacity
+              style={[styles.proceedBtn, { backgroundColor: colors.card, flex: 1, borderWidth: 1, borderColor: colors.border }]}
+              onPress={() => {
+                setAutoAssignRows([]);
+              }}
+            >
+              <Text style={[styles.proceedBtnText, { color: colors.text }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.proceedBtn, { backgroundColor: colors.primary, flex: 2 }]}
+              onPress={handleAssignTasks}
+            >
+              <Text style={styles.proceedBtnText}>👉 Assign Tasks</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-
+        </>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1350,13 +1341,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   proceedBtn: {
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   proceedBtnText: {
-    color: '#fff',
-    fontSize: 18,
+    color: '#1da1f2',
     fontWeight: 'bold',
+    fontSize: 16,
   },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  tabBtnText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  }
 });

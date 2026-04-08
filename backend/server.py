@@ -94,6 +94,8 @@ class MachineTask(BaseModel):
     start_time: Optional[str] = None  # ISO format
     end_time: Optional[str] = None    # ISO format
     status: Optional[str] = "pending"  # pending/in-progress/completed/rejected
+    type: Optional[str] = "manual"     # manual/automatic
+    machine: Optional[str] = None      # M1-M5 if specifically routed
 
 class DailyTask(BaseModel):
     id: Optional[str] = None
@@ -103,6 +105,7 @@ class DailyTask(BaseModel):
     m3: Optional[List[MachineTask]] = []
     m4: Optional[List[MachineTask]] = []
     m5: Optional[List[MachineTask]] = []
+    automatic_tasks: Optional[List[MachineTask]] = []
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class DailyTaskCreate(BaseModel):
@@ -112,6 +115,7 @@ class DailyTaskCreate(BaseModel):
     m3: Optional[List[MachineTask]] = []
     m4: Optional[List[MachineTask]] = []
     m5: Optional[List[MachineTask]] = []
+    automatic_tasks: Optional[List[MachineTask]] = []
 
 
 # Helper function to convert MongoDB ObjectId to string
@@ -303,6 +307,7 @@ def daily_task_helper(task) -> dict:
         "m3": task.get("m3"),
         "m4": task.get("m4"),
         "m5": task.get("m5"),
+        "automatic_tasks": task.get("automatic_tasks", []),
         "created_at": task.get("created_at")
     }
 

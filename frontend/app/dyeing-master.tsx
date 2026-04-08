@@ -47,6 +47,8 @@ export default function DyeingMaster() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: { ply2: string; ply3: string } }>({});
+  const [activeTab, setActiveTab] = useState<'manual' | 'automatic'>('manual');
+  const [assigningMachine, setAssigningMachine] = useState<{ [key: number]: string }>({});
   
   const handleLogout = async () => {
     const performLogout = async () => {
@@ -147,6 +149,59 @@ export default function DyeingMaster() {
       });
     });
     setWeightInputs(inputs);
+  };
+
+  const handleAssignAutomaticToMachine = async (taskIndex: number) => {
+    const machineId = assigningMachine[taskIndex];
+    if (!machineId) {
+      showAlert('Error', 'Please select a machine first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const targetMachineTasks = [...(dailyTask[machineId] || [])];
+      
+      const newAutoTasks = [...(dailyTask.automatic_tasks || [])];
+      const taskToAssign = newAutoTasks[taskIndex];
+      newAutoTasks.splice(taskIndex, 1);
+      
+      targetMachineTasks.push({
+        ...taskToAssign,
+        type: 'automatic',
+        status: 'pending'
+      });
+
+      const payload = {
+        date,
+        m1: dailyTask.m1 || [],
+        m2: dailyTask.m2 || [],
+        m3: dailyTask.m3 || [],
+        m4: dailyTask.m4 || [],
+        m5: dailyTask.m5 || [],
+        automatic_tasks: newAutoTasks,
+        [machineId]: targetMachineTasks
+      };
+
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        showAlert('Success', `Task assigned to ${machineId.toUpperCase()}`);
+        setAssigningMachine(prev => { const next = {...prev}; delete next[taskIndex]; return next; });
+        fetchTodayTask();
+      } else {
+        showAlert('Error', 'Failed to assign task');
+      }
+    } catch (error) {
+      console.error('Assign error:', error);
+      showAlert('Error', 'Failed to save');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchPayment = async (taskId: string) => {
@@ -316,6 +371,23 @@ export default function DyeingMaster() {
         )}
       </View>
 
+      <View style={{ flexDirection: 'row', gap: 10, padding: 15, paddingBottom: 0 }}>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeTab === 'manual' ? { backgroundColor: colors.primary, borderColor: colors.primary } : {backgroundColor: colors.card, borderColor: colors.border}]}
+          onPress={() => setActiveTab('manual')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'manual' ? { color: '#fff' } : { color: colors.text }]}>Pre-filled Tasks (Manual)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeTab === 'automatic' ? { backgroundColor: colors.primary, borderColor: colors.primary } : {backgroundColor: colors.card, borderColor: colors.border}]}
+          onPress={() => setActiveTab('automatic')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'automatic' ? { color: '#fff' } : { color: colors.text }]}>Automatic Tasks</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'manual' ? (
+      <>
       <ScrollView
         style={styles.verticalScrollView}
         contentContainerStyle={styles.verticalScrollContent}
@@ -526,6 +598,65 @@ export default function DyeingMaster() {
           </View>
         </ScrollView>
       </ScrollView>
+      </>
+      ) : (
+      <>
+        <ScrollView style={{ padding: 15 }}>
+          {!dailyTask?.automatic_tasks || dailyTask.automatic_tasks.length === 0 ? (
+            <Text style={{ textAlign: 'center', marginTop: 20, color: colors.textSecondary }}>No Automatic Tasks Available</Text>
+          ) : (
+            dailyTask.automatic_tasks.map((task: any, index: number) => (
+              <View key={index} style={{ backgroundColor: colors.card, padding: 15, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: colors.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: colors.text }}>Shade #{task.shade_number}</Text>
+                  <Text style={{ color: colors.textSecondary }}>Weight: {task.weight} kg</Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                  <View style={{ flex: 1, backgroundColor: colors.background, padding: 8, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>2P Springs</Text>
+                    <Text style={{ fontWeight: 'bold', color: colors.text }}>{task.springs_2ply}</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: colors.background, padding: 8, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>3P Springs</Text>
+                    <Text style={{ fontWeight: 'bold', color: colors.text }}>{task.springs_3ply}</Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>Select Machine</Text>
+                    {Platform.OS === 'web' ? (
+                      <select
+                        style={{ padding: 8, borderRadius: 6, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.inputBackground, color: colors.text }}
+                        value={assigningMachine[index] || ''}
+                        onChange={(e) => setAssigningMachine(prev => ({ ...prev, [index]: e.target.value }))}
+                      >
+                        <option value="">-- Machine --</option>
+                        {MACHINES.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <TextInput
+                         style={[{ padding: 8, borderRadius: 6, borderColor: colors.border, borderWidth: 1 }, { color: colors.text }]}
+                         placeholder="Native dropdown placeholder"
+                      />
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, justifyContent: 'center' }}
+                    onPress={() => handleAssignAutomaticToMachine(index)}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Assign to Machine</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </>
+      )}
     </SafeAreaView>
   );
 }
@@ -838,7 +969,18 @@ const styles = StyleSheet.create({
   },
   pdfButtonText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 'bold',
   },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  tabBtnText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  }
 });
