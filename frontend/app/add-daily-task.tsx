@@ -33,11 +33,14 @@ interface Shade {
   original_weight?: number;
 }
 
-interface CartItem {
-  cartId: string;
+interface AutoAssignRow {
+  id: string;
   shadeId: string;
-  shade_number: string;
-  weight: number;
+  shadeNumber: string;
+  weight: number | '';
+  machineId: string;
+  springs2ply: string;
+  springs3ply: string;
 }
 
 interface MachineTaskData {
@@ -80,11 +83,9 @@ export default function AddDailyTask() {
   const [activeTask, setActiveTask] = useState<{ machineId: string; taskId: string } | null>(null);
   const [saveError, setSaveError] = useState('');
   
-  // Auto Assign Cart States
+  // Auto Assign Editable Rows
   const [showAutoAssignModal, setShowAutoAssignModal] = useState(false);
-  const [autoAssignCart, setAutoAssignCart] = useState<CartItem[]>([]);
-  const [selectedAutoShadeId, setSelectedAutoShadeId] = useState<string>('');
-  const [selectedAutoWeight, setSelectedAutoWeight] = useState<number>(10.5);
+  const [autoAssignRows, setAutoAssignRows] = useState<AutoAssignRow[]>([]);
 
   useEffect(() => {
     fetchShades();
@@ -357,91 +358,103 @@ export default function AddDailyTask() {
     }
   };
 
-  const addToCart = () => {
-    if (!selectedAutoShadeId) {
-      showAlert('Error', 'Please select a shade');
+  const handleAssignTasks = () => {
+    if (autoAssignRows.length === 0) {
+      showAlert('Error', 'No tasks to assign.');
       return;
     }
-    const shade = shades.find(s => s.id === selectedAutoShadeId);
-    if (!shade) return;
 
-    setAutoAssignCart(prev => [
-      ...prev,
-      {
-        cartId: Date.now().toString() + Math.random(),
-        shadeId: shade.id,
-        shade_number: shade.shade_number,
-        weight: selectedAutoWeight,
+    // 1. Validation
+    for (let i = 0; i < autoAssignRows.length; i++) {
+      const row = autoAssignRows[i];
+      if (!row.shadeId || !row.weight || !row.machineId || !row.springs2ply || !row.springs3ply) {
+        showAlert('Error', `Row ${i + 1} has empty fields. Please fill all fields.`);
+        return;
       }
+      
+      const machine = MACHINES.find(m => m.id === row.machineId);
+      if (!machine) {
+        showAlert('Error', `Invalid machine in Row ${i + 1}`);
+        return;
+      }
+
+      const ply2 = parseInt(row.springs2ply) || 0;
+      const ply3 = parseInt(row.springs3ply) || 0;
+      if (ply2 < 0 || ply3 < 0) {
+        showAlert('Error', `Row ${i + 1}: Values cannot be negative.`);
+        return;
+      }
+      if (ply2 + ply3 > machine.totalSprings) {
+        showAlert('Error', `Row ${i + 1}: Total springs (${ply2 + ply3}) exceeds ${machine.name} capacity (${machine.totalSprings})`);
+        return;
+      }
+    }
+
+    // 2. Insert logic
+    setMachineTasks(prev => {
+      const nextTasks = { ...prev };
+      
+      for (const row of autoAssignRows) {
+        const targetMachineTasks = [...nextTasks[row.machineId]];
+        
+        // Find empty slot (shadeId === '')
+        const emptyIndex = targetMachineTasks.findIndex(t => t.shadeId === '');
+        
+        const newTask: MachineTaskData = {
+          id: `${row.machineId}-assigned-${Date.now()}-${Math.random()}`,
+          shadeId: row.shadeId,
+          shadeNumber: row.shadeNumber,
+          springs2ply: row.springs2ply,
+          springs3ply: row.springs3ply,
+          showShadeDropdown: false,
+          shadeSearchText: row.shadeNumber,
+          error: ''
+        };
+
+        if (emptyIndex !== -1) {
+          targetMachineTasks[emptyIndex] = newTask;
+        } else {
+          targetMachineTasks.push(newTask);
+        }
+        
+        nextTasks[row.machineId] = targetMachineTasks;
+      }
+      return nextTasks;
+    });
+
+    setAutoAssignRows([]);
+    setShowAutoAssignModal(false);
+    showAlert('Success', 'Tasks accurately assigned to grid!');
+  };
+
+  const addAutoAssignRow = () => {
+    setAutoAssignRows(prev => [
+      ...prev, 
+      { id: Date.now().toString() + Math.random(), shadeId: '', shadeNumber: '', weight: '', machineId: '', springs2ply: '', springs3ply: '' }
     ]);
   };
 
-  const removeFromCart = (cartId: string) => {
-    setAutoAssignCart(prev => prev.filter(c => c.cartId !== cartId));
+  const updateAutoAssignRow = (rowId: string, field: keyof AutoAssignRow, value: any) => {
+    setAutoAssignRows(prev => prev.map(row => {
+      if (row.id !== rowId) return row;
+      
+      const updatedRow = { ...row, [field]: value };
+      
+      if (field === 'shadeId') {
+        const shade = shades.find(s => s.id === value);
+        if (shade) {
+          updatedRow.shadeNumber = shade.shade_number;
+          if (!updatedRow.weight && shade.original_weight) {
+             updatedRow.weight = shade.original_weight;
+          }
+        }
+      }
+      return updatedRow;
+    }));
   };
 
-  const clearCart = () => {
-    setAutoAssignCart([]);
-  };
-
-  const generateTasksFromCart = () => {
-    if (autoAssignCart.length === 0) {
-      showAlert('Error', 'Cart is empty. Add tasks first.');
-      return;
-    }
-
-    const newMachineTasks: { [key: string]: MachineTaskData[] } = {};
-    MACHINES.forEach(m => {
-      newMachineTasks[m.id] = [];
-    });
-
-    const machineIndexForCapacity: { [cap: number]: number } = {};
-
-    for (const item of autoAssignCart) {
-      const weight = item.weight;
-      const matchingMachines = MACHINES.filter(m => m.capacity === weight);
-
-      if (matchingMachines.length > 0) {
-         if (machineIndexForCapacity[weight] === undefined) {
-           machineIndexForCapacity[weight] = 0;
-         }
-         
-         const totalSlotsForWeight = matchingMachines.length * 5; 
-         if (machineIndexForCapacity[weight] >= totalSlotsForWeight) {
-           showAlert('Error', `Too many ${weight}kg tasks. Max available rows is ${totalSlotsForWeight}.`);
-           return; 
-         }
-
-         const m = matchingMachines[machineIndexForCapacity[weight] % matchingMachines.length];
-         machineIndexForCapacity[weight]++;
-
-         newMachineTasks[m.id].push({
-           id: `${m.id}-auto-${Date.now()}-${item.cartId}`,
-           shadeId: item.shadeId,
-           shadeNumber: item.shade_number,
-           springs2ply: m.totalSprings.toString(), 
-           springs3ply: '0', 
-           showShadeDropdown: false,
-           shadeSearchText: item.shade_number,
-           error: ''
-         });
-      } else {
-         showAlert('Error', `No machine supports ${weight}kg capacity.`);
-         return;
-      }
-    }
-
-    MACHINES.forEach(m => {
-      while (newMachineTasks[m.id].length < 5) {
-         newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
-      }
-    });
-    
-    setMachineTasks(newMachineTasks);
-    setSaveError('');
-    setShowAutoAssignModal(false);
-    setAutoAssignCart([]);
-    showAlert('Success', 'Tasks generated successfully from cart!');
+  const removeAutoAssignRow = (rowId: string) => {
+    setAutoAssignRows(prev => prev.filter(r => r.id !== rowId));
   };
 
   return (
@@ -740,110 +753,133 @@ export default function AddDailyTask() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>🛒 Auto Assign Cart</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>📋 Auto Assign Editor</Text>
               <TouchableOpacity onPress={() => setShowAutoAssignModal(false)}>
                 <Text style={styles.closeModalText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.modalScroll}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>1. Select Shade</Text>
-              <View style={[styles.selectionRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                {shades.length > 0 ? (
-                  <View style={styles.shadePickerWrap}>
-                    {Platform.OS === 'web' ? (
-                      <select
-                        style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
-                        value={selectedAutoShadeId}
-                        onChange={(e) => setSelectedAutoShadeId(e.target.value)}
-                      >
-                        <option value="">-- Select Shade --</option>
-                        {shades.map(s => (
-                          <option key={s.id} value={s.id}>#{s.shade_number}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <TextInput
-                         style={[styles.smallInput, { color: colors.text }]}
-                         placeholder="Select shade unavailable in native without picker"
-                      />
-                    )}
-                  </View>
-                ) : (
-                  <Text style={{ color: colors.textSecondary }}>No shades available.</Text>
-                )}
-              </View>
-
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 15 }]}>2. Select Weight (kg)</Text>
-              <View style={styles.weightButtonsRow}>
-                {[6, 10.5, 12, 24].map((w) => (
-                  <TouchableOpacity
-                    key={w}
-                    style={[
-                      styles.weightSelectBtn,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      selectedAutoWeight === w && { backgroundColor: colors.primary, borderColor: colors.primary }
-                    ]}
-                    onPress={() => setSelectedAutoWeight(w)}
-                  >
-                    <Text style={[
-                      styles.weightSelectText,
-                      { color: colors.text },
-                      selectedAutoWeight === w && { color: '#fff', fontWeight: 'bold' }
-                    ]}>{w} kg</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.addToCartBtn, { backgroundColor: colors.success }]}
-                onPress={addToCart}
-              >
-                <Text style={styles.addToCartBtnText}>+ Add to Cart</Text>
-              </TouchableOpacity>
-
-              <View style={[styles.cartDivider, { backgroundColor: colors.border }]} />
-              
-              <View style={styles.cartHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
-                  Your Cart ({autoAssignCart.length})
-                </Text>
-                {autoAssignCart.length > 0 && (
-                  <TouchableOpacity onPress={clearCart}>
-                    <Text style={[styles.clearCartText, { color: colors.danger }]}>Clear All</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {autoAssignCart.length === 0 ? (
+              {autoAssignRows.length === 0 ? (
                 <Text style={[styles.emptyCartText, { color: colors.textSecondary }]}>
-                  No items in cart.
+                  No tasks added yet. Click "+ Add Task Row" below.
                 </Text>
               ) : (
-                <View style={styles.cartList}>
-                  {autoAssignCart.map((item, idx) => (
-                    <View key={item.cartId} style={[styles.cartItem, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-                      <View style={styles.cartItemInfo}>
-                        <View style={[styles.cartShadeBadge, { backgroundColor: colors.primary }]}>
-                          <Text style={styles.cartShadeText}>#{item.shade_number}</Text>
-                        </View>
-                        <Text style={[styles.cartWeightText, { color: colors.textSecondary }]}>{item.weight} kg</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => removeFromCart(item.cartId)}>
-                        <Text style={[styles.removeCartText, { color: colors.danger }]}>✕</Text>
+                autoAssignRows.map((row, index) => (
+                  <View key={row.id} style={[styles.selectionRow, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 10 }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ fontWeight: 'bold', color: colors.text }}>Task #{index + 1}</Text>
+                      <TouchableOpacity onPress={() => removeAutoAssignRow(row.id)}>
+                        <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕ Remove</Text>
                       </TouchableOpacity>
                     </View>
-                  ))}
-                </View>
+                    
+                    {/* Select Shade */}
+                    <View style={{ marginBottom: 10 }}>
+                      <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Shade</Text>
+                      {Platform.OS === 'web' ? (
+                        <select
+                          style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
+                          value={row.shadeId}
+                          onChange={(e) => updateAutoAssignRow(row.id, 'shadeId', e.target.value)}
+                        >
+                          <option value="">-- Select Shade --</option>
+                          {shades.map(s => (
+                            <option key={s.id} value={s.id}>#{s.shade_number}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <TextInput
+                           style={[styles.smallInput, { color: colors.text, borderColor: colors.border }]}
+                           placeholder="Native dropdown placeholder"
+                        />
+                      )}
+                    </View>
+
+                    {/* Weight & Machine Row */}
+                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Weight</Text>
+                        {Platform.OS === 'web' ? (
+                          <select
+                            style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
+                            value={row.weight.toString()}
+                            onChange={(e) => updateAutoAssignRow(row.id, 'weight', e.target.value ? Number(e.target.value) : '')}
+                          >
+                            <option value="">Weight</option>
+                            {[6, 10.5, 12, 24].map(w => (
+                              <option key={w} value={w}>{w} kg</option>
+                            ))}
+                          </select>
+                        ) : null}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>Machine</Text>
+                        {Platform.OS === 'web' ? (
+                          <select
+                            style={{ ...styles.webSelect, color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }}
+                            value={row.machineId}
+                            onChange={(e) => updateAutoAssignRow(row.id, 'machineId', e.target.value)}
+                          >
+                            <option value="">Machine</option>
+                            {MACHINES.map(m => (
+                              <option key={m.id} value={m.id}>{m.name} ({m.totalSprings} max)</option>
+                            ))}
+                          </select>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    {/* 2P & 3P Inputs Row */}
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>2P Springs</Text>
+                        <TextInput
+                          style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
+                          keyboardType="numeric"
+                          value={row.springs2ply}
+                          onChangeText={(v) => updateAutoAssignRow(row.id, 'springs2ply', v)}
+                          placeholder="0"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 5 }}>3P Springs</Text>
+                        <TextInput
+                          style={[styles.smallInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBackground }]}
+                          keyboardType="numeric"
+                          value={row.springs3ply}
+                          onChangeText={(v) => updateAutoAssignRow(row.id, 'springs3ply', v)}
+                          placeholder="0"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                ))
               )}
+
+              <TouchableOpacity 
+                style={[styles.gridAddRowButton, { borderColor: colors.primary, marginTop: 15 }]} 
+                onPress={addAutoAssignRow}
+              >
+                <Text style={[styles.gridAddRowText, { color: colors.primary }]}>+ Add Line Item</Text>
+              </TouchableOpacity>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+            <View style={[styles.modalFooter, { borderTopColor: colors.border, flexDirection: 'row', gap: 10 }]}>
               <TouchableOpacity
-                style={[styles.proceedBtn, { backgroundColor: colors.primary }]}
-                onPress={generateTasksFromCart}
+                style={[styles.proceedBtn, { backgroundColor: colors.card, flex: 1, borderWidth: 1, borderColor: colors.border }]}
+                onPress={() => {
+                  setAutoAssignRows([]);
+                  setShowAutoAssignModal(false);
+                }}
               >
-                <Text style={styles.proceedBtnText}>▶️ Proceed & Generate Tasks</Text>
+                <Text style={[styles.proceedBtnText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.proceedBtn, { backgroundColor: colors.primary, flex: 2 }]}
+                onPress={handleAssignTasks}
+              >
+                <Text style={styles.proceedBtnText}>👉 Assign Tasks</Text>
               </TouchableOpacity>
             </View>
           </View>
