@@ -55,6 +55,7 @@ export default function DailyTasks() {
   const [dateFilter, setDateFilter] = useState('');
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'manual' | 'automatic'>('all');
 
+  useEffect(() => {
     fetchTasks();
   }, []);
 
