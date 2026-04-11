@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   Platform,
+  TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +19,13 @@ import { useTheme } from '../context/ThemeContext';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 const MACHINE_WEIGHTS = [6, 10.5, 12, 24];
+
+const MACHINE_MAPPING: { [key: number]: string } = {
+  6: "M4",
+  10.5: "M1",
+  12: "M2 / M3",
+  24: "M5"
+};
 
 interface DyeItem {
   dye_name: string;
@@ -45,6 +53,8 @@ interface CartItem {
   weight: number;
   rc: string;
   originalWeight: number;
+  twoP?: string;
+  threeP?: string;
   dyes: ScaledDye[];
 }
 
@@ -55,7 +65,10 @@ export default function Calculator() {
   const { colors } = useTheme();
 
   const [shade, setShade] = useState<Shade | null>(null);
-  const [selectedMachine, setSelectedMachine] = useState<number>(6);
+  const [selectedMachine, setSelectedMachine] = useState<number | 'random'>(6);
+  const [randomWeight, setRandomWeight] = useState<string>('');
+  const [twoPValues, setTwoPValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '' });
+  const [threePValues, setThreePValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '' });
   const [allMachinesData, setAllMachinesData] = useState<{
     [key: string]: ScaledDye[];
   }>({});
@@ -168,6 +181,14 @@ export default function Calculator() {
     }
   };
 
+  const getScaledRecipe = (weight: number): ScaledDye[] => {
+    if (!shade) return [];
+    return shade.dyes.map(dye => ({
+      dye_name: dye.dye_name,
+      quantity: (weight / shade.original_weight) * dye.quantity
+    }));
+  };
+
   const calculateAllMachines = async () => {
     try {
       const response = await fetch(
@@ -192,16 +213,33 @@ export default function Calculator() {
   };
 
   const addToCart = () => {
-    if (!shade || !allMachinesData[selectedMachine]) return;
+    if (!shade) return;
+
+    let currentWeight: number;
+    let currentDyes: ScaledDye[];
+
+    if (selectedMachine === 'random') {
+      currentWeight = parseFloat(randomWeight);
+      if (isNaN(currentWeight) || currentWeight <= 0) {
+        Alert.alert('Error', 'Please enter a valid random weight');
+        return;
+      }
+      currentDyes = getScaledRecipe(currentWeight);
+    } else {
+      currentWeight = selectedMachine;
+      currentDyes = allMachinesData[selectedMachine] || getScaledRecipe(selectedMachine);
+    }
 
     const cartItem: CartItem = {
-      id: `${shade.id}-${selectedMachine}-${Date.now()}`,
+      id: `${shade.id}-${currentWeight}-${Date.now()}`,
       shadeNumber: shade.shade_number,
       programNumber: shade.program_number || 'P1',
-      weight: selectedMachine,
+      weight: currentWeight,
       rc: shade.rc || 'No',
       originalWeight: shade.original_weight,
-      dyes: allMachinesData[selectedMachine],
+      twoP: selectedMachine !== 'random' ? twoPValues[selectedMachine.toString()] : undefined,
+      threeP: selectedMachine !== 'random' ? threePValues[selectedMachine.toString()] : undefined,
+      dyes: currentDyes,
     };
 
     setCart(prev => {
@@ -439,6 +477,8 @@ export default function Calculator() {
             <div class="recipe-info">
               <div>Original: <span>${item.originalWeight} kg</span></div>
               <div>Scaled to: <span>${item.weight} kg</span></div>
+              ${item.twoP ? `<div>2P: <span>${item.twoP}</span></div>` : ''}
+              ${item.threeP ? `<div>3P: <span>${item.threeP}</span></div>` : ''}
             </div>
             <table>
               <thead>
@@ -560,38 +600,106 @@ export default function Calculator() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>⚖️ Select Weight</Text>
           <View style={styles.machineButtons}>
             {MACHINE_WEIGHTS.map((weight) => (
+              <View key={weight} style={styles.weightColumn}>
+                <TouchableOpacity
+                  style={[
+                    styles.machineButton,
+                    { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                    selectedMachine === weight && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                  onPress={() => setSelectedMachine(weight)}
+                >
+                  <Text
+                    style={[
+                      styles.machineButtonText,
+                      { color: colors.textSecondary, marginBottom: 2 },
+                      selectedMachine === weight && { color: '#fff' },
+                    ]}
+                  >
+                    {weight} kg
+                  </Text>
+                  <Text style={[styles.machineMappingText, { color: selectedMachine === weight ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    ({MACHINE_MAPPING[weight]})
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* 2P / 3P Inputs */}
+                <View style={styles.pInputRow}>
+                  <View style={styles.pInputWrapper}>
+                    <Text style={[styles.pInputLabel, { color: colors.textSecondary }]}>2P</Text>
+                    <TextInput
+                      style={[styles.pInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                      value={twoPValues[weight.toString()]}
+                      onChangeText={(val) => setTwoPValues(prev => ({ ...prev, [weight.toString()]: val }))}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                  <View style={styles.pInputWrapper}>
+                    <Text style={[styles.pInputLabel, { color: colors.textSecondary }]}>3P</Text>
+                    <TextInput
+                      style={[styles.pInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                      value={threePValues[weight.toString()]}
+                      onChangeText={(val) => setThreePValues(prev => ({ ...prev, [weight.toString()]: val }))}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            {/* Random Weight Button */}
+            <View style={styles.weightColumn}>
               <TouchableOpacity
-                key={weight}
                 style={[
                   styles.machineButton,
                   { backgroundColor: colors.inputBackground, borderColor: colors.border },
-                  selectedMachine === weight && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  selectedMachine === 'random' && { backgroundColor: colors.accent, borderColor: colors.accent },
                 ]}
-                onPress={() => setSelectedMachine(weight)}
+                onPress={() => setSelectedMachine('random')}
               >
                 <Text
                   style={[
                     styles.machineButtonText,
                     { color: colors.textSecondary },
-                    selectedMachine === weight && { color: '#fff' },
+                    selectedMachine === 'random' && { color: '#fff' },
                   ]}
                 >
-                  {weight} kg
+                  Random
                 </Text>
-                {selectedMachine === weight && (
-                  <Text style={styles.machineButtonCheck}>✓</Text>
+                {selectedMachine === 'random' && (
+                   <Text style={[styles.machineMappingText, { color: '#fff' }]}>Custom</Text>
                 )}
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
+
+          {/* Random Weight Input Box */}
+          {selectedMachine === 'random' && (
+            <View style={styles.randomInputContainer}>
+              <Text style={[styles.randomInputLabel, { color: colors.textSecondary }]}>Enter Custom Weight (kg):</Text>
+              <TextInput
+                style={[styles.randomInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.accent }]}
+                value={randomWeight}
+                onChangeText={setRandomWeight}
+                keyboardType="numeric"
+                placeholder="e.g. 15.5"
+                placeholderTextColor={colors.textSecondary}
+                autoFocus
+              />
+            </View>
+          )}
         </View>
 
         {/* Scaled Recipe for Selected Machine */}
-        {allMachinesData[selectedMachine] && (
+        {(selectedMachine === 'random' ? (parseFloat(randomWeight) > 0) : !!allMachinesData[selectedMachine]) && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
-                📋 Recipe for {selectedMachine} kg
+                📋 Recipe for {selectedMachine === 'random' ? randomWeight : selectedMachine} kg
               </Text>
               <TouchableOpacity
                 style={[
@@ -601,21 +709,22 @@ export default function Calculator() {
                 onPress={addToCart}
               >
                 <Text style={styles.addToCartButtonText}>
-                  {addedFeedback ? '✓ Added!' : '🛒 Add to Cart'}
+                  {addedFeedback ? '✓ Added' : '+ Add to Cart'}
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {allMachinesData[selectedMachine].map((dye, index) => (
-              <View key={index} style={[styles.scaledDyeRow, { backgroundColor: colors.card, borderLeftColor: colors.primary, borderColor: colors.border, borderWidth: 1 }]}>
-                <View style={[styles.dyeNameBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.scaledDyeName, { color: colors.primary }]}>{dye.dye_name}</Text>
+            <View style={[styles.recipeCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+              {/* Recipe List */}
+              {(selectedMachine === 'random' ? getScaledRecipe(parseFloat(randomWeight)) : (allMachinesData[selectedMachine] || getScaledRecipe(selectedMachine))).map((dye, index) => (
+                <View key={index} style={[styles.scaledDyeRow, { borderLeftColor: colors.primary, backgroundColor: colors.background }]}>
+                  <Text style={[styles.scaledDyeName, { color: colors.text }]}>{dye.dye_name}</Text>
+                  <View style={styles.scaledDyeQuantityContainer}>
+                    <Text style={[styles.scaledDyeQuantity, { color: colors.primary }]}>{dye.quantity.toFixed(3)}</Text>
+                    <Text style={[styles.unitText, { color: colors.textSecondary }]}> gm</Text>
+                  </View>
                 </View>
-                <Text style={[styles.scaledDyeQuantity, { color: colors.primary }]}>
-                  {dye.quantity.toFixed(3)} gm
-                </Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
 
@@ -657,6 +766,11 @@ export default function Calculator() {
                     <Text style={[styles.headerText, { color: colors.text }]}>{weight} kg</Text>
                   </View>
                 ))}
+                {selectedMachine === 'random' && parseFloat(randomWeight) > 0 && (
+                  <View style={[styles.tableCell, styles.headerCell, styles.machineCell, { backgroundColor: colors.accent + '22' }]}>
+                    <Text style={[styles.headerText, { color: colors.accent }]}>{randomWeight} kg</Text>
+                  </View>
+                )}
               </View>
 
               {/* Table Rows */}
@@ -692,6 +806,13 @@ export default function Calculator() {
                       </View>
                     );
                   })}
+                  {selectedMachine === 'random' && parseFloat(randomWeight) > 0 && (
+                    <View style={[styles.tableCell, styles.machineCell, { backgroundColor: colors.accent + '11' }]}>
+                      <Text style={[styles.tableCellText, { color: colors.accent, fontWeight: 'bold' }]}>
+                        {((parseFloat(randomWeight) / shade.original_weight) * dye.quantity).toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
@@ -741,6 +862,13 @@ export default function Calculator() {
                           {item.rc === 'Yes' && (
                             <View style={[styles.cartRcBadge, { backgroundColor: '#805AD5' }]}>
                               <Text style={styles.cartRcBadgeText}>RC</Text>
+                            </View>
+                          )}
+                          {(item.twoP || item.threeP) && (
+                            <View style={[styles.cartBadge, { backgroundColor: colors.secondary }]}>
+                              <Text style={styles.cartBadgeText}>
+                                {item.twoP ? `2P:${item.twoP}` : ''} {item.threeP ? `3P:${item.threeP}` : ''}
+                              </Text>
                             </View>
                           )}
                         </View>
@@ -968,18 +1096,103 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   machineButton: {
-    flex: 1,
-    minWidth: 70,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
+    minHeight: 60,
+    justifyContent: 'center',
   },
   machineButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
+  machineMappingText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  weightColumn: {
+    flex: 1,
+    minWidth: 80,
+    gap: 8,
+  },
+  pInputRow: {
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'space-between',
+  },
+  pInputWrapper: {
+    flex: 1,
+  },
+  pInputLabel: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  pInput: {
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+    fontSize: 12,
+    textAlign: 'center',
+    padding: 0,
+  },
+  randomInputContainer: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#ccc',
+  },
+  randomInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  randomInput: {
+    height: 45,
+    borderRadius: 10,
+    borderWidth: 2,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  recipeCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  scaledDyeRow: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+  },
+  scaledDyeName: {
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+  },
+  scaledDyeQuantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  scaledDyeQuantity: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  unitText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  scaledDyeRowOld: {
   machineButtonCheck: {
     color: '#fff',
     fontSize: 14,
@@ -1227,6 +1440,16 @@ const styles = StyleSheet.create({
   printAllButtonText: {
     color: '#fff',
     fontSize: 15,
+    fontWeight: 'bold',
+  },
+  cartBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: 'bold',
   },
 });
