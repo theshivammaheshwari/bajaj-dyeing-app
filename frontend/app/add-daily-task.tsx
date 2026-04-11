@@ -85,9 +85,16 @@ export default function AddDailyTask() {
   
   const [activeTab, setActiveTab] = useState<'manual' | 'automatic'>('manual');
   
-  // Auto Assign Editable Rows
   const [autoAssignRows, setAutoAssignRows] = useState<AutoAssignRow[]>([]);
   const [existingAutomaticTasks, setExistingAutomaticTasks] = useState<any[]>([]);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
 
   useEffect(() => {
     fetchShades();
@@ -472,7 +479,7 @@ export default function AddDailyTask() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Add Daily Task</Text>

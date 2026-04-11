@@ -55,9 +55,16 @@ export default function DailyTasks() {
   const [dateFilter, setDateFilter] = useState('');
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'manual' | 'automatic'>('all');
 
-  useEffect(() => {
     fetchTasks();
   }, []);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -305,7 +312,7 @@ export default function DailyTasks() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleBack}>
             <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Daily Machine Tasks</Text>

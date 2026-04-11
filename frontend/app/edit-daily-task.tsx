@@ -73,6 +73,14 @@ export default function EditDailyTask() {
 
   const maxRows = Math.max(...Object.values(machineTasks).map(tasks => tasks.length), 5);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   useEffect(() => {
     fetchShades();
     if (taskId) {
@@ -277,7 +285,7 @@ export default function EditDailyTask() {
         style={styles.keyboardView}
       >
         <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Daily Task</Text>

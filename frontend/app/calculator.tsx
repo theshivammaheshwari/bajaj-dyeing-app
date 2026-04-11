@@ -110,6 +110,14 @@ export default function Calculator() {
     initData();
   }, []);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   // Save cart to AsyncStorage and Backend
   const syncCart = useCallback(async (updatedCart: CartItem[]) => {
     try {
@@ -503,7 +511,7 @@ export default function Calculator() {
 
       {/* Header with Cart */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Text style={[styles.backLink, { color: colors.primary }]}>← Back</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Recipe Calculator</Text>

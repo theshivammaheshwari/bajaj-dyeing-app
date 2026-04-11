@@ -43,6 +43,14 @@ export default function AddShade() {
     fetchDyeNames();
   }, []);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   const fetchDyeNames = async () => {
     try {
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/dye-names`);
@@ -191,7 +199,7 @@ export default function AddShade() {
         style={styles.keyboardView}
       >
         <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Add New Shade</Text>

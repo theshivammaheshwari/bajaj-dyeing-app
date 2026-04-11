@@ -73,6 +73,14 @@ export default function DyeingMaster() {
     ]);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   useEffect(() => {
     if (date === new Date().toISOString().split('T')[0]) {
       checkAndRollover();
@@ -330,7 +338,7 @@ export default function DyeingMaster() {
 
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, shadowColor: colors.shadow }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <Text style={[styles.backBtnText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Image
