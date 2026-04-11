@@ -469,7 +469,7 @@ export default function Calculator() {
     <div class="footer">
       Generated on: ${new Date().toLocaleString()} | Bajaj Dyeing Unit
     </div>
-  `).join('')}
+  </div>
 </body>
 </html>`;
 
