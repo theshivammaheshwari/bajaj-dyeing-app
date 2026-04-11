@@ -1192,30 +1192,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  scaledDyeRowOld: {
   machineButtonCheck: {
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
     marginTop: 4,
-  },
-  scaledDyeRow: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderLeftWidth: 4,
-  },
-  scaledDyeName: {
-    fontSize: 15,
-    fontWeight: '600',
-    flex: 1,
-  },
-  scaledDyeQuantity: {
-    fontSize: 17,
-    fontWeight: 'bold',
   },
   table: {
     borderRadius: 12,
@@ -1451,5 +1432,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: 'bold',
-  },
+  }
 });
