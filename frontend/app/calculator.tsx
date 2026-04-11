@@ -281,24 +281,34 @@ export default function Calculator() {
       return;
     }
 
-    // Group recipes into chunks of 10 for pagination
-    const itemsPerPage = 10;
-    const paginatedItems = [];
-    for (let i = 0; i < cart.length; i += itemsPerPage) {
-      paginatedItems.push(cart.slice(i, i + itemsPerPage));
-    }
+    // Mapping logic
+    const machineMapping: Record<number, string> = {
+      10.5: 'M1',
+      12: 'M2',
+      6: 'M4',
+      24: 'M5'
+    };
+    const machineOrder = ["M1", "M2", "M3", "M4", "M5", "Other"];
 
-    // Build print HTML with pagination
+    // Group and Sort Data
+    const grouped = cart.reduce((acc: { [key: string]: CartItem[] }, item) => {
+      const machine = machineMapping[item.weight] || 'Other';
+      if (!acc[machine]) acc[machine] = [];
+      acc[machine].push(item);
+      return acc;
+    }, {});
+
+    // Build print HTML
     const printHTML = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Bajaj Dyeing - Recipe Cart Print</title>
+  <title>Bajaj Dyeing - Sorted Recipe Print</title>
   <style>
     @page {
       size: A1 landscape;
-      margin: 15mm;
+      margin: 10mm;
     }
     * {
       box-sizing: border-box;
@@ -306,149 +316,108 @@ export default function Calculator() {
       padding: 0;
     }
     body {
-      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       color: #000;
       background: #fff;
+      line-height: 1.4;
     }
-    .page {
-      page-break-after: always;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+    .print-container {
       padding: 20px;
     }
-    .page:last-child {
-      page-break-after: auto;
+    .machine-section {
+      margin-bottom: 40px;
+      page-break-inside: auto;
     }
-    .print-header {
-      text-align: center;
-      margin-bottom: 25px;
-      border-bottom: 4px solid #000;
-      padding-bottom: 15px;
-    }
-    .print-header h1 {
-      font-size: 48px;
-      color: #000;
+    .machine-header {
+      font-size: 42px;
       font-weight: 900;
-      margin-bottom: 4px;
+      color: #000;
+      text-align: center;
+      padding: 15px;
+      border: 5px solid #000;
+      margin-bottom: 25px;
+      background: #f0f0f0;
       text-transform: uppercase;
-      letter-spacing: 4px;
-    }
-    .print-header p {
-      font-size: 20px;
-      font-weight: 600;
-      color: #333;
+      letter-spacing: 5px;
     }
     .recipes-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-      flex-grow: 1;
+      gap: 25px;
     }
     .recipe-card {
-      border: 3px solid #000;
-      border-radius: 15px;
-      padding: 20px;
-      background: #fff;
+      border: 2px solid #000;
+      padding: 15px;
       page-break-inside: avoid;
       display: flex;
       flex-direction: column;
-      height: auto;
+      background: #fff;
     }
-    .recipe-card-header {
+    .recipe-header {
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #000;
-      padding-bottom: 12px;
-      margin-bottom: 15px;
+      align-items: baseline;
     }
-    .shade-title {
-      font-size: 32px;
-      font-weight: 900;
+    .recipe-title {
+      font-size: 24px;
       color: #000;
-      letter-spacing: 1px;
     }
-    .badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 8px;
+    .shade-name {
       font-weight: 900;
+      text-transform: uppercase;
+    }
+    .tags {
+      font-weight: 700;
+      margin-left: 10px;
+    }
+    .weight-tag {
+      font-size: 20px;
+      font-weight: 900;
+      border: 2px solid #000;
+      padding: 2px 8px;
+    }
+    .scaled-info {
       font-size: 16px;
-      color: #fff;
-      margin-left: 8px;
-      border: 1px solid #000;
-    }
-    .badge-weight {
-      background: #000;
-    }
-    .badge-program {
-      background: #FF9800;
-      color: #000;
-    }
-    .badge-rc {
-      background: #805AD5;
-    }
-    .recipe-info {
-      display: flex;
-      gap: 25px;
-      margin-bottom: 15px;
-      font-size: 18px;
-      font-weight: 600;
-      color: #000;
-    }
-    .recipe-info span {
-      font-weight: 900;
-      color: #000;
-      text-decoration: underline;
+      font-weight: 700;
+      margin-bottom: 10px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
     }
     th {
-      background: #000;
-      color: #fff;
-      padding: 12px 15px;
       text-align: left;
-      font-size: 18px;
-      font-weight: 900;
-    }
-    th:last-child {
-      text-align: right;
+      font-size: 14px;
+      border-bottom: 1px solid #000;
+      padding-bottom: 4px;
+      text-transform: uppercase;
     }
     td {
-      padding: 12px 15px;
-      border-bottom: 2px solid #EEE;
+      padding: 6px 0;
       font-size: 18px;
       font-weight: 700;
-      color: #000;
+      border-bottom: 1px solid #eee;
     }
-    td:last-child {
+    .qty-cell {
       text-align: right;
       font-weight: 900;
+      font-family: monospace;
+      font-size: 20px;
     }
-    .print-footer {
-      margin-top: 20px;
-      text-align: center;
-      border-top: 3px solid #000;
-      padding-top: 15px;
-      color: #333;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .watermark {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
+    .unit {
       font-size: 12px;
-      opacity: 0.5;
+      font-weight: normal;
+      margin-left: 4px;
     }
-    
-    /* Hide non-print elements */
-    @media screen {
-      .print-only { display: none; }
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 12px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
     }
     @media print {
       .no-print { display: none; }
@@ -457,51 +426,48 @@ export default function Calculator() {
   </style>
 </head>
 <body>
-  ${paginatedItems.map((pageItems, pageIdx) => `
-    <div class="page">
-      <div class="print-header">
-        <h1>Bajaj Dyeing Unit</h1>
-        <p>Recipe Print — Page ${pageIdx + 1} of ${paginatedItems.length} (${cart.length} Total)</p>
-      </div>
-      <div class="recipes-grid">
-        ${pageItems.map(item => `
-          <div class="recipe-card">
-            <div class="recipe-card-header">
-              <div>
-                <span class="shade-title">#${item.shadeNumber}</span>
-                <span class="badge badge-program">${item.programNumber}</span>
-                ${item.rc === 'Yes' ? '<span class="badge badge-rc">RC</span>' : ''}
+  <div class="print-container">
+    ${machineOrder.filter(m => grouped[m]).map(machine => `
+      <div class="machine-section">
+        <div class="machine-header">=== ${machine} ===</div>
+        <div class="recipes-grid">
+          ${grouped[machine].map(item => `
+            <div class="recipe-card">
+              <div class="recipe-header">
+                <div class="recipe-title">
+                  <span class="shade-name">${item.shadeNumber}</span>
+                  <span class="tags">
+                    ${item.twoP ? `P2 ` : ''}
+                    ${item.threeP ? `P3 ` : ''}
+                    ${item.rc === 'Yes' ? 'RC' : ''}
+                  </span>
+                </div>
+                <div class="weight-tag">${item.weight} kg</div>
               </div>
-              <span class="badge badge-weight">${item.weight} kg</span>
-            </div>
-            <div class="recipe-info">
-              <div>Original: <span>${item.originalWeight} kg</span></div>
-              <div>Scaled to: <span>${item.weight} kg</span></div>
-              ${item.twoP ? `<div>2P: <span>${item.twoP}</span></div>` : ''}
-              ${item.threeP ? `<div>3P: <span>${item.threeP}</span></div>` : ''}
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Dye / Chemical</th>
-                  <th>QTY (gm)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${item.dyes.map(dye => `
+              <div class="scaled-info">Scaled to: ${item.weight} kg</div>
+              <table>
+                <thead>
                   <tr>
-                    <td>${dye.dye_name}</td>
-                    <td>${dye.quantity.toFixed(3)}</td>
+                    <th>Dye / Chemical</th>
+                    <th style="text-align: right;">QTY (gm)</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `).join('')}
+                </thead>
+                <tbody>
+                  ${item.dyes.map(dye => `
+                    <tr>
+                      <td>${dye.dye_name}</td>
+                      <td class="qty-cell">${dye.quantity.toFixed(3)}<span class="unit">gm</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('')}
+        </div>
       </div>
-      <div class="print-footer">
-        <p>Generated on: ${new Date().toLocaleString()} | Bajaj Dyeing Confidential</p>
-      </div>
+    `).join('')}
+    <div class="footer">
+      Generated on: ${new Date().toLocaleString()} | Bajaj Dyeing Unit
     </div>
   `).join('')}
 </body>
