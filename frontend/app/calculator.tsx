@@ -520,7 +520,7 @@ export default function Calculator() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
       >
         {/* Shade Info */}
         <View style={[styles.shadeInfoCard, { backgroundColor: colors.card, borderColor: colors.primary, shadowColor: colors.shadow }]}>

@@ -200,7 +200,7 @@ export default function AddShade() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Shade Information</Text>

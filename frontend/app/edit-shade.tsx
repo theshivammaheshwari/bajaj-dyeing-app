@@ -298,7 +298,7 @@ export default function EditShade() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Shade Information</Text>

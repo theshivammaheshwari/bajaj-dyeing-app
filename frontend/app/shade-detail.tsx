@@ -114,7 +114,7 @@ export default function ShadeDetail() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
       >
         <View style={styles.printArea}>
           {/* Print Header - Only visible during print */}

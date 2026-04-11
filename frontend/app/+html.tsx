@@ -21,9 +21,21 @@ export default function Root({ children }: PropsWithChildren) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              body > div:first-child { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; }
+              body > div:first-child { min-height: 100vh; display: flex; flex-direction: column; }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
               [role="heading"], [role="heading"] * { overflow: visible !important; }
+
+              /* Custom Scrollbar Styling */
+              html { scroll-behavior: smooth; }
+              ::-webkit-scrollbar { width: 10px; height: 10px; }
+              ::-webkit-scrollbar-track { background: transparent; }
+              ::-webkit-scrollbar-thumb { 
+                background-color: #90cdf4; 
+                border-radius: 10px; 
+                border: 2px solid #EDF4FC;
+                background-clip: padding-box;
+              }
+              ::-webkit-scrollbar-thumb:hover { background-color: #2B6CB0; }
 
               @media print {
                 .no-print { display: none !important; }
@@ -40,9 +52,10 @@ export default function Root({ children }: PropsWithChildren) {
         style={{
           margin: 0,
           height: "100%",
-          overflow: "hidden",
+          overflowY: "auto",
           display: "flex",
           flexDirection: "column",
+          backgroundColor: "#EDF4FC",
         }}
       >
         {children}

@@ -264,7 +264,7 @@ export default function Index() {
             renderItem={renderShadeItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             style={styles.flatList}
           />
         </View>
