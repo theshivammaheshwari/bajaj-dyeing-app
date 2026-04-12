@@ -67,8 +67,8 @@ export default function Calculator() {
   const [shade, setShade] = useState<Shade | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<number | 'random'>(6);
   const [randomWeight, setRandomWeight] = useState<string>('');
-  const [twoPValues, setTwoPValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '' });
-  const [threePValues, setThreePValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '' });
+  const [twoPValues, setTwoPValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '', 'random': '' });
+  const [threePValues, setThreePValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '', 'random': '' });
   const [allMachinesData, setAllMachinesData] = useState<{
     [key: string]: ScaledDye[];
   }>({});
@@ -237,8 +237,8 @@ export default function Calculator() {
       weight: currentWeight,
       rc: shade.rc || 'No',
       originalWeight: shade.original_weight,
-      twoP: selectedMachine !== 'random' ? twoPValues[selectedMachine.toString()] : undefined,
-      threeP: selectedMachine !== 'random' ? threePValues[selectedMachine.toString()] : undefined,
+      twoP: selectedMachine === 'random' ? twoPValues['random'] : twoPValues[selectedMachine.toString()],
+      threeP: selectedMachine === 'random' ? threePValues['random'] : threePValues[selectedMachine.toString()],
       dyes: currentDyes,
     };
 
@@ -284,15 +284,21 @@ export default function Calculator() {
     // Mapping logic
     const machineMapping: Record<number, string> = {
       10.5: 'M1',
-      12: 'M2',
       6: 'M4',
       24: 'M5'
     };
     const machineOrder = ["M1", "M2", "M3", "M4", "M5", "Other"];
 
-    // Group and Sort Data
+    // Group and Sort Data with 12kg split logic
+    let twelveKgCount = 0;
     const grouped = cart.reduce((acc: { [key: string]: CartItem[] }, item) => {
-      const machine = machineMapping[item.weight] || 'Other';
+      let machine = machineMapping[item.weight] || 'Other';
+      
+      if (item.weight === 12) {
+        machine = (twelveKgCount % 2 === 0) ? 'M2' : 'M3';
+        twelveKgCount++;
+      }
+
       if (!acc[machine]) acc[machine] = [];
       acc[machine].push(item);
       return acc;
@@ -356,18 +362,24 @@ export default function Calculator() {
     .recipe-header {
       border-bottom: 2px solid #000;
       padding-bottom: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
     }
     .recipe-title {
-      font-size: 24px;
+      font-size: 26px;
       color: #000;
     }
     .shade-name {
       font-weight: 900;
       text-transform: uppercase;
+    }
+    .p-counts {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #333;
     }
     .tags {
       font-weight: 700;
@@ -435,14 +447,16 @@ export default function Calculator() {
             <div class="recipe-card">
               <div class="recipe-header">
                 <div class="recipe-title">
-                  <span class="shade-name">${item.shadeNumber}</span>
+                  <span class="shade-name" style="color: #000;">${item.shadeNumber}</span>
                   <span class="tags">
-                    ${item.twoP ? `P2 ` : ''}
-                    ${item.threeP ? `P3 ` : ''}
+                    ${item.threeP ? `P3 ` : (item.twoP ? 'P2 ' : '')}
                     ${item.rc === 'Yes' ? 'RC' : ''}
                   </span>
                 </div>
                 <div class="weight-tag">${item.weight} kg</div>
+              </div>
+              <div class="p-counts">
+                2P: ${item.twoP || '0'} &nbsp;&nbsp;&nbsp; 3P: ${item.threeP || '0'}
               </div>
               <div class="scaled-info">Scaled to: ${item.weight} kg</div>
               <table>
@@ -656,6 +670,32 @@ export default function Calculator() {
                 placeholderTextColor={colors.textSecondary}
                 autoFocus
               />
+
+              {/* Random Weight 2P / 3P */}
+              <View style={[styles.pInputRow, { marginTop: 12 }]}>
+                <View style={styles.pInputWrapper}>
+                  <Text style={[styles.pInputLabel, { color: colors.textSecondary }]}>2P</Text>
+                  <TextInput
+                    style={[styles.pInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                    value={twoPValues['random']}
+                    onChangeText={(val) => setTwoPValues(prev => ({ ...prev, 'random': val }))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+                <View style={styles.pInputWrapper}>
+                  <Text style={[styles.pInputLabel, { color: colors.textSecondary }]}>3P</Text>
+                  <TextInput
+                    style={[styles.pInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                    value={threePValues['random']}
+                    onChangeText={(val) => setThreePValues(prev => ({ ...prev, 'random': val }))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
             </View>
           )}
         </View>
