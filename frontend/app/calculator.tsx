@@ -52,6 +52,7 @@ interface CartItem {
   programNumber: string;
   weight: number;
   rc: string;
+  machine: string;
   originalWeight: number;
   twoP?: string;
   threeP?: string;
@@ -69,6 +70,13 @@ export default function Calculator() {
   const [randomWeight, setRandomWeight] = useState<string>('');
   const [twoPValues, setTwoPValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '', 'random': '' });
   const [threePValues, setThreePValues] = useState<{ [key: string]: string }>({ '6': '', '10.5': '', '12': '', '24': '', 'random': '' });
+  const [machineSelections, setMachineSelections] = useState<{ [key: string]: string }>({
+    '6': 'M4',
+    '10.5': 'M1',
+    '24': 'M5',
+    '12': '',
+    'random': ''
+  });
   const [allMachinesData, setAllMachinesData] = useState<{
     [key: string]: ScaledDye[];
   }>({});
@@ -230,12 +238,19 @@ export default function Calculator() {
       currentDyes = allMachinesData[selectedMachine] || getScaledRecipe(selectedMachine);
     }
 
+    const machine = machineSelections[selectedMachine.toString()];
+    if (!machine) {
+      Alert.alert('Selection Required', 'Please select a machine (M1-M5) for this batch.');
+      return;
+    }
+
     const cartItem: CartItem = {
       id: `${shade.id}-${currentWeight}-${Date.now()}`,
       shadeNumber: shade.shade_number,
       programNumber: shade.program_number || 'P1',
       weight: currentWeight,
       rc: shade.rc || 'No',
+      machine: machine,
       originalWeight: shade.original_weight,
       twoP: selectedMachine === 'random' ? twoPValues['random'] : twoPValues[selectedMachine.toString()],
       threeP: selectedMachine === 'random' ? threePValues['random'] : threePValues[selectedMachine.toString()],
@@ -281,24 +296,12 @@ export default function Calculator() {
       return;
     }
 
-    // Mapping logic
-    const machineMapping: Record<number, string> = {
-      10.5: 'M1',
-      6: 'M4',
-      24: 'M5'
-    };
-    const machineOrder = ["M1", "M2", "M3", "M4", "M5", "Other"];
+    // Define sort order
+    const machineOrder = ["M1", "M2", "M3", "M4", "M5"];
 
-    // Group and Sort Data with 12kg split logic
-    let twelveKgCount = 0;
+    // Group items by their selected machine
     const grouped = cart.reduce((acc: { [key: string]: CartItem[] }, item) => {
-      let machine = machineMapping[item.weight] || 'Other';
-      
-      if (item.weight === 12) {
-        machine = (twelveKgCount % 2 === 0) ? 'M2' : 'M3';
-        twelveKgCount++;
-      }
-
+      const machine = item.machine || 'Other';
       if (!acc[machine]) acc[machine] = [];
       acc[machine].push(item);
       return acc;
@@ -599,9 +602,30 @@ export default function Calculator() {
                     {weight} kg
                   </Text>
                   <Text style={[styles.machineMappingText, { color: selectedMachine === weight ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
-                    ({MACHINE_MAPPING[weight]})
+                    ({weight === 12 ? (machineSelections['12'] || 'Select M') : MACHINE_MAPPING[weight]})
                   </Text>
                 </TouchableOpacity>
+
+                {/* Machine Selector for 12kg */}
+                {selectedMachine === 12 && weight === 12 && (
+                  <View style={styles.subMachineButtons}>
+                    {['M2', 'M3'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.subMachineButton,
+                          { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                          machineSelections['12'] === m && { backgroundColor: colors.accent, borderColor: colors.accent },
+                        ]}
+                        onPress={() => setMachineSelections(prev => ({ ...prev, '12': m }))}
+                      >
+                        <Text style={[styles.subMachineButtonText, { color: machineSelections['12'] === m ? '#fff' : colors.text }]}>
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 
                 {/* 2P / 3P Inputs */}
                 <View style={styles.pInputRow}>
@@ -670,6 +694,30 @@ export default function Calculator() {
                 placeholderTextColor={colors.textSecondary}
                 autoFocus
               />
+
+              {/* Machine Selector for Random Weight */}
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 8, textAlign: 'center' }}>
+                  Assign to Machine:
+                </Text>
+                <View style={styles.subMachineButtons}>
+                  {['M1', 'M2', 'M3', 'M4', 'M5'].map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[
+                        styles.subMachineButton,
+                        { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                        machineSelections['random'] === m && { backgroundColor: colors.accent, borderColor: colors.accent },
+                      ]}
+                      onPress={() => setMachineSelections(prev => ({ ...prev, 'random': m }))}
+                    >
+                      <Text style={[styles.subMachineButtonText, { color: machineSelections['random'] === m ? '#fff' : colors.text }]}>
+                        {m}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
               {/* Random Weight 2P / 3P */}
               <View style={[styles.pInputRow, { marginTop: 12 }]}>
@@ -1438,5 +1486,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: 'bold',
-  }
+  },
+  subMachineButtons: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 4,
+    justifyContent: 'center',
+  },
+  subMachineButton: {
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  subMachineButtonText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
 });
