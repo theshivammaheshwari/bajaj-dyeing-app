@@ -352,81 +352,65 @@ export default function Calculator() {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-size: 24pt !important;
+      font-weight: bold !important;
+      color: #000 !important;
+      border-color: #000 !important;
     }
     body {
       font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      color: #000;
       background: #fff;
-      line-height: 1.4;
-    }
-    .print-container {
+      line-height: 1.5;
       padding: 20px;
     }
+    .print-container {
+      width: 100%;
+    }
     .machine-section {
-      margin-bottom: 40px;
+      margin-bottom: 50px;
       page-break-inside: auto;
     }
     .machine-header {
-      font-size: 42px;
-      font-weight: 900;
-      color: #000;
       text-align: center;
-      padding: 15px;
-      border: 5px solid #000;
-      margin-bottom: 25px;
-      background: #f0f0f0;
+      padding: 20px;
+      border: 6px solid #000;
+      margin-bottom: 30px;
+      background: #eee;
       text-transform: uppercase;
-      letter-spacing: 5px;
+      letter-spacing: 4px;
     }
     .recipes-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 25px;
+      gap: 30px;
     }
     .recipe-card {
-      border: 2px solid #000;
-      padding: 15px;
+      border: 3px solid #000;
+      padding: 20px;
       page-break-inside: avoid;
       display: flex;
       flex-direction: column;
-      background: #fff;
     }
     .recipe-header {
-      border-bottom: 2px solid #000;
-      padding-bottom: 8px;
-      margin-bottom: 8px;
+      border-bottom: 3px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
     }
-    .recipe-title {
-      font-size: 26px;
-      color: #000;
-    }
     .shade-name {
-      font-weight: 900;
       text-transform: uppercase;
     }
     .p-counts {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: #333;
-    }
-    .tags {
-      font-weight: 700;
-      margin-left: 10px;
+      margin-bottom: 15px;
     }
     .weight-tag {
-      font-size: 20px;
-      font-weight: 900;
-      border: 2px solid #000;
-      padding: 2px 8px;
+      border: 3px solid #000;
+      padding: 5px 15px;
     }
     .scaled-info {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     table {
       width: 100%;
@@ -434,38 +418,27 @@ export default function Calculator() {
     }
     th {
       text-align: left;
-      font-size: 14px;
-      border-bottom: 1px solid #000;
-      padding-bottom: 4px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
       text-transform: uppercase;
     }
     td {
-      padding: 6px 0;
-      font-size: 18px;
-      font-weight: 700;
-      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+      border-bottom: 1px solid #ddd;
     }
     .qty-cell {
       text-align: right;
-      font-weight: 900;
       font-family: monospace;
-      font-size: 20px;
-    }
-    .unit {
-      font-size: 12px;
-      font-weight: normal;
-      margin-left: 4px;
     }
     .footer {
-      margin-top: 30px;
+      margin-top: 50px;
       text-align: center;
-      font-size: 12px;
-      border-top: 1px solid #ccc;
-      padding-top: 10px;
+      padding-top: 20px;
+      border-top: 2px solid #000;
     }
     @media print {
-      .no-print { display: none; }
       body { padding: 0; }
+      .no-print { display: none; }
     }
   </style>
 </head>
