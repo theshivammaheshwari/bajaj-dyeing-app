@@ -238,6 +238,11 @@ export default function Calculator() {
       currentDyes = allMachinesData[selectedMachine] || getScaledRecipe(selectedMachine);
     }
 
+    if (!currentDyes || currentDyes.length === 0) {
+      Alert.alert('Error', 'Recipe data is missing. Please refresh and try again.');
+      return;
+    }
+
     const machine = machineSelections[selectedMachine.toString()];
     if (!machine) {
       Alert.alert('Selection Required', 'Please select a machine (M1-M5) for this batch.');
@@ -290,17 +295,41 @@ export default function Calculator() {
     }
   };
 
-  const handleBulkPrint = () => {
+  const handleBulkPrint = async () => {
     if (Platform.OS !== 'web') {
       Alert.alert('Print', 'Bulk printing is only supported in the web version.');
+      return;
+    }
+
+    // Always fetch latest data from backend before printing to ensure cross-device consistency
+    let latestCart = cart;
+    if (userRole) {
+      setIsSyncing(true);
+      try {
+        const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/cart/${userRole}`);
+        const data = await response.json();
+        if (data.items && Array.isArray(data.items)) {
+          latestCart = data.items;
+          setCart(latestCart);
+          await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(latestCart));
+        }
+      } catch (e) {
+        console.warn('Backend sync failed before print, using local data', e);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+
+    if (latestCart.length === 0) {
+      Alert.alert('Print', 'Cart is empty. Nothing to print.');
       return;
     }
 
     // Define sort order
     const machineOrder = ["M1", "M2", "M3", "M4", "M5"];
 
-    // Group items by their selected machine
-    const grouped = cart.reduce((acc: { [key: string]: CartItem[] }, item) => {
+    // Group items by their selected machine using the LATEST data
+    const grouped = latestCart.reduce((acc: { [key: string]: CartItem[] }, item) => {
       const machine = item.machine || 'Other';
       if (!acc[machine]) acc[machine] = [];
       acc[machine].push(item);
@@ -470,12 +499,19 @@ export default function Calculator() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${item.dyes.map(dye => `
+                  ${(item.dyes && item.dyes.length > 0) ? item.dyes.map(dye => `
                     <tr>
                       <td>${dye.dye_name}</td>
                       <td class="qty-cell">${dye.quantity.toFixed(3)}<span class="unit">gm</span></td>
                     </tr>
-                  `).join('')}
+                  `).join('') : `
+                    <tr>
+                      <td colspan="2" style="text-align: center; color: #D32F2F; font-weight: 900; padding: 20px;">
+                        ⚠️ DATA MISSING (Sync Error) <br/>
+                        Please re-add this recipe to your cart.
+                      </td>
+                    </tr>
+                  `}
                 </tbody>
               </table>
             </div>
