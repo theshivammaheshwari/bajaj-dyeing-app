@@ -92,7 +92,10 @@ class CartItemModel(BaseModel):
     programNumber: str
     weight: float
     rc: str
+    machine: Optional[str] = None
     originalWeight: float
+    twoP: Optional[str] = None
+    threeP: Optional[str] = None
     dyes: List[CartDye]
 
 class UserCart(BaseModel):
