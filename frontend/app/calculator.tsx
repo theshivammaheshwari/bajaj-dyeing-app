@@ -453,8 +453,8 @@ export default function Calculator() {
               <div class="recipe-header">
                 <div class="recipe-title">
                   <span class="shade-name" style="color: #000;">${item.shadeNumber}</span>
-                  <span class="tags">
-                    ${item.threeP ? `P3 ` : (item.twoP ? 'P2 ' : '')}
+                   <span class="tags">
+                    ${item.programNumber} 
                     ${item.rc === 'Yes' ? 'RC' : ''}
                   </span>
                 </div>
