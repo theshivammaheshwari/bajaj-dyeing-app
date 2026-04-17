@@ -86,6 +86,7 @@ export default function Calculator() {
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedProgram, setSelectedProgram] = useState<string>('P1');
 
   const CART_STORAGE_KEY = 'bajaj_recipe_cart';
 
@@ -181,6 +182,9 @@ export default function Calculator() {
       );
       const data = await response.json();
       setShade(data);
+      if (data.program_number) {
+        setSelectedProgram(data.program_number);
+      }
     } catch (error) {
       console.error('Error fetching shade:', error);
       Alert.alert('Error', 'Failed to load shade');
@@ -252,7 +256,7 @@ export default function Calculator() {
     const cartItem: CartItem = {
       id: `${shade.id}-${currentWeight}-${Date.now()}`,
       shadeNumber: shade.shade_number,
-      programNumber: shade.program_number || 'P1',
+      programNumber: selectedProgram,
       weight: currentWeight,
       rc: shade.rc || 'No',
       machine: machine,
@@ -454,7 +458,7 @@ export default function Calculator() {
                 <div class="recipe-title">
                   <span class="shade-name" style="color: #000;">${item.shadeNumber}</span>
                   <span class="tags">
-                    ${item.threeP ? `P3 ` : (item.twoP ? 'P2 ' : '')}
+                    ${item.programNumber} 
                     ${item.rc === 'Yes' ? 'RC' : ''}
                   </span>
                 </div>
@@ -572,8 +576,25 @@ export default function Calculator() {
                   <Text style={styles.rcBadgeText}>RC</Text>
                 </View>
               )}
-              <View style={styles.programBadge}>
-                <Text style={styles.programText}>{shade.program_number || 'P1'}</Text>
+              <View style={styles.programSelector}>
+                {['P1', 'P2', 'P3'].map((p) => (
+                  <TouchableOpacity
+                    key={p}
+                    style={[
+                      styles.programButton,
+                      { borderColor: colors.border },
+                      selectedProgram === p && { backgroundColor: colors.accent, borderColor: colors.accent }
+                    ]}
+                    onPress={() => setSelectedProgram(p)}
+                  >
+                    <Text style={[
+                      styles.programButtonText,
+                      { color: selectedProgram === p ? '#fff' : colors.textSecondary }
+                    ]}>
+                      {p}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           </View>
@@ -1513,5 +1534,22 @@ const styles = StyleSheet.create({
   subMachineButtonText: {
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  programSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  programButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  programButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
