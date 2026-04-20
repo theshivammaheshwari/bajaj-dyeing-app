@@ -345,14 +345,14 @@ export default function Calculator() {
   <title>Bajaj Dyeing - Sorted Recipe Print</title>
   <style>
     @page {
-      size: A1 landscape;
-      margin: 10mm;
+      size: A4 landscape;
+      margin: 5mm;
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-size: 24pt !important;
+      font-size: 20pt !important;
       font-weight: bold !important;
       color: #000 !important;
       border-color: #000 !important;
@@ -360,15 +360,18 @@ export default function Calculator() {
     body {
       font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: #fff;
-      line-height: 1.5;
-      padding: 20px;
+      line-height: 1.3;
+      padding: 10px;
     }
     .print-container {
       width: 100%;
     }
     .machine-section {
-      margin-bottom: 50px;
-      page-break-inside: auto;
+      margin-bottom: 30px;
+      page-break-after: always;
+    }
+    .machine-section:last-child {
+      page-break-after: auto;
     }
     .machine-header {
       text-align: center;
