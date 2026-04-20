@@ -352,7 +352,7 @@ export default function Calculator() {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-size: 20pt !important;
+      font-size: 18pt !important;
       font-weight: bold !important;
       color: #000 !important;
       border-color: #000 !important;
@@ -366,38 +366,50 @@ export default function Calculator() {
     .print-container {
       width: 100%;
     }
-    .machine-section {
-      margin-bottom: 30px;
+    .machine-wrapper {
+      width: 100%;
+      border-collapse: collapse;
       page-break-after: always;
+      margin-bottom: 30px;
     }
-    .machine-section:last-child {
+    .machine-wrapper:last-child {
       page-break-after: auto;
+    }
+    .machine-thead {
+      display: table-header-group;
+    }
+    .machine-header-cell {
+      padding: 0;
+      border: none;
     }
     .machine-header {
       text-align: center;
-      padding: 20px;
+      padding: 15px;
       border: 6px solid #000;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
       background: #eee;
       text-transform: uppercase;
       letter-spacing: 4px;
+      width: 100%;
     }
     .recipes-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 30px;
+      gap: 25px;
+      padding-top: 10px;
     }
     .recipe-card {
       border: 3px solid #000;
-      padding: 20px;
+      padding: 15px;
       page-break-inside: avoid;
       display: flex;
       flex-direction: column;
+      margin-bottom: 15px;
     }
     .recipe-header {
       border-bottom: 3px solid #000;
-      padding-bottom: 10px;
-      margin-bottom: 15px;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
@@ -406,27 +418,27 @@ export default function Calculator() {
       text-transform: uppercase;
     }
     .p-counts {
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .weight-tag {
       border: 3px solid #000;
-      padding: 5px 15px;
+      padding: 4px 12px;
     }
     .scaled-info {
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
-    table {
+    .recipe-table {
       width: 100%;
       border-collapse: collapse;
     }
-    th {
+    .recipe-table th {
       text-align: left;
       border-bottom: 2px solid #000;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
       text-transform: uppercase;
     }
-    td {
-      padding: 10px 0;
+    .recipe-table td {
+      padding: 8px 0;
       border-bottom: 1px solid #ddd;
     }
     .qty-cell {
@@ -434,9 +446,9 @@ export default function Calculator() {
       font-family: monospace;
     }
     .footer {
-      margin-top: 50px;
+      margin-top: 40px;
       text-align: center;
-      padding-top: 20px;
+      padding-top: 15px;
       border-top: 2px solid #000;
     }
     @media print {
@@ -448,52 +460,64 @@ export default function Calculator() {
 <body>
   <div class="print-container">
     ${machineOrder.filter(m => grouped[m]).map(machine => `
-      <div class="machine-section">
-        <div class="machine-header">=== ${machine} ===</div>
-        <div class="recipes-grid">
-          ${grouped[machine].map(item => `
-            <div class="recipe-card">
-              <div class="recipe-header">
-                <div class="recipe-title">
-                  <span class="shade-name" style="color: #000;">${item.shadeNumber}</span>
-                   <span class="tags">
-                    ${item.programNumber} 
-                    ${item.rc === 'Yes' ? 'RC' : ''}
-                  </span>
-                </div>
-                <div class="weight-tag">${item.weight} kg</div>
+      <table class="machine-wrapper">
+        <thead class="machine-thead">
+          <tr>
+            <th class="machine-header-cell">
+              <div class="machine-header">=== ${machine} ===</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="recipes-grid">
+                ${grouped[machine].map(item => `
+                  <div class="recipe-card">
+                    <div class="recipe-header">
+                      <div class="recipe-title">
+                        <span class="shade-name" style="color: #000;">${item.shadeNumber}</span>
+                         <span class="tags">
+                          ${item.programNumber} 
+                          ${item.rc === 'Yes' ? 'RC' : ''}
+                        </span>
+                      </div>
+                      <div class="weight-tag">${item.weight} kg</div>
+                    </div>
+                    <div class="p-counts">
+                      2P: ${item.twoP || '0'} &nbsp;&nbsp;&nbsp; 3P: ${item.threeP || '0'}
+                    </div>
+                    <div class="scaled-info">Scaled to: ${item.weight} kg</div>
+                    <table class="recipe-table">
+                      <thead>
+                        <tr>
+                          <th>Dye / Chemical</th>
+                          <th style="text-align: right;">QTY (gm)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${(item.dyes && item.dyes.length > 0) ? item.dyes.map(dye => `
+                          <tr>
+                            <td>${dye.dye_name}</td>
+                            <td class="qty-cell">${dye.quantity.toFixed(3)}<span class="unit">gm</span></td>
+                          </tr>
+                        `).join('') : `
+                          <tr>
+                            <td colspan="2" style="text-align: center; color: #D32F2F; font-weight: 900; padding: 20px;">
+                              ⚠️ DATA MISSING (Sync Error) <br/>
+                              Please re-add this recipe to your cart.
+                            </td>
+                          </tr>
+                        `}
+                      </tbody>
+                    </table>
+                  </div>
+                `).join('')}
               </div>
-              <div class="p-counts">
-                2P: ${item.twoP || '0'} &nbsp;&nbsp;&nbsp; 3P: ${item.threeP || '0'}
-              </div>
-              <div class="scaled-info">Scaled to: ${item.weight} kg</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Dye / Chemical</th>
-                    <th style="text-align: right;">QTY (gm)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(item.dyes && item.dyes.length > 0) ? item.dyes.map(dye => `
-                    <tr>
-                      <td>${dye.dye_name}</td>
-                      <td class="qty-cell">${dye.quantity.toFixed(3)}<span class="unit">gm</span></td>
-                    </tr>
-                  `).join('') : `
-                    <tr>
-                      <td colspan="2" style="text-align: center; color: #D32F2F; font-weight: 900; padding: 20px;">
-                        ⚠️ DATA MISSING (Sync Error) <br/>
-                        Please re-add this recipe to your cart.
-                      </td>
-                    </tr>
-                  `}
-                </tbody>
-              </table>
-            </div>
-          `).join('')}
-        </div>
-      </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     `).join('')}
     <div class="footer">
       Generated on: ${new Date().toLocaleString()} | Bajaj Dyeing Unit
