@@ -86,6 +86,87 @@ export default function Calculator() {
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendToDailyTasks = async () => {
+    if (cart.length === 0) {
+      Alert.alert('Empty Cart', 'Please add recipes to the cart first.');
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const activeDate = await AsyncStorage.getItem('active_working_date');
+      
+      if (!activeDate) {
+        Alert.alert(
+          'Date Required', 
+          'Please go to Daily Tasks page and select/filter a date before sending tasks.',
+          [{ text: 'Close' }]
+        );
+        setIsSending(false);
+        return;
+      }
+
+      // Fetch current task for this date
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${activeDate}`);
+      const data = await response.json();
+      
+      let existingTask = data.id ? data : { date: activeDate, m1: [], m2: [], m3: [], m4: [], m5: [], automatic_tasks: [] };
+
+      // Map cart items to machine tasks
+      cart.forEach(item => {
+        const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
+        const newTask = {
+          shade_id: item.id.split('-')[0], // Extract shade id from cart item id
+          shade_number: item.shadeNumber,
+          springs_2ply: parseInt(item.twoP || '0'),
+          springs_3ply: parseInt(item.threeP || '0'),
+          weight: item.weight,
+          status: 'pending',
+          type: 'manual',
+          machine: item.machine
+        };
+
+        if (existingTask[machineKey]) {
+          existingTask[machineKey].push(newTask);
+        } else {
+          existingTask[machineKey] = [newTask];
+        }
+      });
+
+      // Save updated task
+      const saveMethod = existingTask.id ? 'PUT' : 'POST';
+      const saveUrl = existingTask.id 
+        ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${existingTask.id}`
+        : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
+
+      const saveResponse = await fetch(saveUrl, {
+        method: saveMethod,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(existingTask),
+      });
+
+      if (saveResponse.ok) {
+        Alert.alert(
+          'Success', 
+          `Tasks successfully assigned to ${activeDate}!`,
+          [
+            { text: 'Clear Cart', onPress: () => clearCart() },
+            { text: 'Keep Cart', style: 'cancel' }
+          ]
+        );
+      } else {
+        const error = await saveResponse.json();
+        throw new Error(error.detail || 'Failed to save tasks');
+      }
+
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Something went wrong while sending tasks.');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const CART_STORAGE_KEY = 'bajaj_recipe_cart';
 
@@ -994,13 +1075,26 @@ export default function Calculator() {
                     <Text style={styles.clearCartButtonText}>🗑 Clear All</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
+                    style={[
+                      styles.sendTasksButton, 
+                      { backgroundColor: colors.success },
+                      isSending && { opacity: 0.7 }
+                    ]}
+                    onPress={handleSendToDailyTasks}
+                    disabled={isSending}
+                  >
+                    <Text style={styles.printAllButtonText}>
+                      {isSending ? '⌛ Sending...' : '🚀 Send to Daily Tasks'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={[styles.printAllButton, { backgroundColor: colors.primary }]}
                     onPress={() => {
                       setShowCart(false);
                       handleBulkPrint();
                     }}
                   >
-                    <Text style={styles.printAllButtonText}>🖨️ Print All (A1)</Text>
+                    <Text style={styles.printAllButtonText}>🖨️ Print All</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -1498,8 +1592,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  sendTasksButton: {
+    flex: 1.8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   printAllButton: {
-    flex: 2,
+    flex: 1.2,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -1510,7 +1614,7 @@ const styles = StyleSheet.create({
   },
   printAllButtonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   cartBadge: {

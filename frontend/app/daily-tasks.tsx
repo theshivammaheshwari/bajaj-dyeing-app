@@ -17,6 +17,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { getBackendBaseUrl } from '../lib/api-base';
 import { useTheme } from '../context/ThemeContext';
 import { printDailyTaskPdf } from '../lib/pdf-utils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const EXPO_PUBLIC_BACKEND_URL = getBackendBaseUrl();
 
@@ -34,6 +35,7 @@ interface MachineTask {
   springs_2ply: number;
   springs_3ply: number;
   weight: number;
+  type?: 'manual' | 'automatic';
 }
 
 interface DailyTask {
@@ -58,6 +60,17 @@ export default function DailyTasks() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // Save active working date for Calculator integration
+  useEffect(() => {
+    const saveActiveDate = async () => {
+      // YYYY-MM-DD is 10 chars
+      if (dateFilter.trim().length === 10) {
+        await AsyncStorage.setItem('active_working_date', dateFilter.trim());
+      }
+    };
+    saveActiveDate();
+  }, [dateFilter]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
