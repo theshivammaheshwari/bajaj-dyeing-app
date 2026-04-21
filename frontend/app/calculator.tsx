@@ -88,9 +88,18 @@ export default function Calculator() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  const showAlert = (title: string, message: string, onOk?: () => void) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+      if (onOk) onOk();
+    } else {
+      Alert.alert(title, message, onOk ? [{ text: 'OK', onPress: onOk }] : undefined);
+    }
+  };
+
   const handleSendToDailyTasks = async () => {
     if (cart.length === 0) {
-      Alert.alert('Empty Cart', 'Please add recipes to the cart first.');
+      showAlert('Empty Cart', 'Please add recipes to the cart first.');
       return;
     }
 
@@ -99,10 +108,9 @@ export default function Calculator() {
       const activeDate = await AsyncStorage.getItem('active_working_date');
       
       if (!activeDate) {
-        Alert.alert(
+        showAlert(
           'Date Required', 
-          'Please go to Daily Tasks page and select/filter a date before sending tasks.',
-          [{ text: 'Close' }]
+          'Please go to Daily Tasks page and select/filter a date before sending tasks.'
         );
         setIsSending(false);
         return;
@@ -148,21 +156,26 @@ export default function Calculator() {
       });
 
       if (saveResponse.ok) {
-        Alert.alert(
-          'Success', 
-          `Tasks successfully assigned to ${activeDate}!`,
-          [
-            { text: 'Clear Cart', onPress: () => clearCart() },
-            { text: 'Keep Cart', style: 'cancel' }
-          ]
-        );
+        if (Platform.OS === 'web') {
+          const confirmClear = window.confirm(`Tasks successfully assigned to ${activeDate}!\n\nDo you want to CLEAR the cart now?`);
+          if (confirmClear) clearCart();
+        } else {
+          Alert.alert(
+            'Success', 
+            `Tasks successfully assigned to ${activeDate}!`,
+            [
+              { text: 'Clear Cart', onPress: () => clearCart() },
+              { text: 'Keep Cart', style: 'cancel' }
+            ]
+          );
+        }
       } else {
         const error = await saveResponse.json();
         throw new Error(error.detail || 'Failed to save tasks');
       }
 
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong while sending tasks.');
+      showAlert('Error', error.message || 'Something went wrong while sending tasks.');
     } finally {
       setIsSending(false);
     }

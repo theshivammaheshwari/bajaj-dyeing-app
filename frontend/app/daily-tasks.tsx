@@ -59,6 +59,16 @@ export default function DailyTasks() {
 
   useEffect(() => {
     fetchTasks();
+    
+    // Set today as default active working date for Calculator
+    const setTodayAsDefault = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const current = await AsyncStorage.getItem('active_working_date');
+      if (!current) {
+        await AsyncStorage.setItem('active_working_date', today);
+      }
+    };
+    setTodayAsDefault();
   }, []);
 
   // Save active working date for Calculator integration
