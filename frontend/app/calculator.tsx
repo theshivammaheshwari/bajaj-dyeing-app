@@ -103,77 +103,111 @@ export default function Calculator() {
       return;
     }
 
+    const processTaskSending = async (targetDate: string) => {
+      try {
+        setIsSending(true);
+        // Fetch current task for this date
+        const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${targetDate}`);
+        const data = await response.json();
+        
+        let existingTask = data.id ? data : { date: targetDate, m1: [], m2: [], m3: [], m4: [], m5: [], automatic_tasks: [] };
+
+        // Map cart items to machine tasks
+        cart.forEach(item => {
+          const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
+          const newTask = {
+            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
+            shade_id: item.id.split('-')[0], // Extract shade id from cart item id
+            shade_number: item.shadeNumber,
+            springs_2ply: parseInt(item.twoP || '0'),
+            springs_3ply: parseInt(item.threeP || '0'),
+            weight: item.weight,
+            status: 'pending',
+            type: 'manual',
+            machine: item.machine
+          };
+
+          if (existingTask[machineKey]) {
+            existingTask[machineKey].push(newTask);
+          } else {
+            existingTask[machineKey] = [newTask];
+          }
+        });
+
+        // Save updated task
+        const saveMethod = existingTask.id ? 'PUT' : 'POST';
+        const saveUrl = existingTask.id 
+          ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${existingTask.id}`
+          : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
+
+        const saveResponse = await fetch(saveUrl, {
+          method: saveMethod,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(existingTask),
+        });
+
+        if (saveResponse.ok) {
+          if (Platform.OS === 'web') {
+            const confirmClear = window.confirm(`Tasks successfully assigned to ${targetDate}!\n\nDo you want to CLEAR the cart now?`);
+            if (confirmClear) clearCart();
+          } else {
+            Alert.alert(
+              'Success', 
+              `Tasks successfully assigned to ${targetDate}!`,
+              [
+                { text: 'Clear Cart', onPress: () => clearCart() },
+                { text: 'Keep Cart', style: 'cancel' }
+              ]
+            );
+          }
+        } else {
+          const error = await saveResponse.json();
+          throw new Error(error.detail || 'Failed to save tasks');
+        }
+
+      } catch (error: any) {
+        showAlert('Error', error.message || 'Something went wrong while sending tasks.');
+      } finally {
+        setIsSending(false);
+      }
+    };
+
     try {
-      setIsSending(true);
       let activeDate = await AsyncStorage.getItem('active_working_date');
+      const today = new Date().toISOString().split('T')[0];
       
       if (!activeDate) {
-        activeDate = new Date().toISOString().split('T')[0];
+        activeDate = today;
       }
 
-      // Fetch current task for this date
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${activeDate}`);
-      const data = await response.json();
-      
-      let existingTask = data.id ? data : { date: activeDate, m1: [], m2: [], m3: [], m4: [], m5: [], automatic_tasks: [] };
-
-      // Map cart items to machine tasks
-      cart.forEach(item => {
-        const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
-        const newTask = {
-          id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
-          shade_id: item.id.split('-')[0], // Extract shade id from cart item id
-          shade_number: item.shadeNumber,
-          springs_2ply: parseInt(item.twoP || '0'),
-          springs_3ply: parseInt(item.threeP || '0'),
-          weight: item.weight,
-          status: 'pending',
-          type: 'manual',
-          machine: item.machine
-        };
-
-        if (existingTask[machineKey]) {
-          existingTask[machineKey].push(newTask);
-        } else {
-          existingTask[machineKey] = [newTask];
-        }
-      });
-
-      // Save updated task
-      const saveMethod = existingTask.id ? 'PUT' : 'POST';
-      const saveUrl = existingTask.id 
-        ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${existingTask.id}`
-        : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
-
-      const saveResponse = await fetch(saveUrl, {
-        method: saveMethod,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(existingTask),
-      });
-
-      if (saveResponse.ok) {
+      if (activeDate !== today) {
         if (Platform.OS === 'web') {
-          const confirmClear = window.confirm(`Tasks successfully assigned to ${activeDate}!\n\nDo you want to CLEAR the cart now?`);
-          if (confirmClear) clearCart();
+          const useActive = window.confirm(`Send tasks to previously selected date: ${activeDate}?\n\nClick OK for ${activeDate}\nClick Cancel for Today (${today})`);
+          if (useActive) {
+            await processTaskSending(activeDate);
+          } else {
+            await AsyncStorage.setItem('active_working_date', today);
+            await processTaskSending(today);
+          }
         } else {
           Alert.alert(
-            'Success', 
-            `Tasks successfully assigned to ${activeDate}!`,
+            'Confirm Date',
+            `Send tasks to previously selected date: ${activeDate}?`,
             [
-              { text: 'Clear Cart', onPress: () => clearCart() },
-              { text: 'Keep Cart', style: 'cancel' }
+              { text: `Use Today (${today})`, onPress: async () => {
+                await AsyncStorage.setItem('active_working_date', today);
+                await processTaskSending(today);
+              }},
+              { text: `Use ${activeDate}`, onPress: () => processTaskSending(activeDate as string) }
             ]
           );
         }
       } else {
-        const error = await saveResponse.json();
-        throw new Error(error.detail || 'Failed to save tasks');
+        await processTaskSending(today);
       }
-
-    } catch (error: any) {
-      showAlert('Error', error.message || 'Something went wrong while sending tasks.');
-    } finally {
-      setIsSending(false);
+    } catch (error) {
+      console.error('Error resolving date:', error);
+      showAlert('Error', 'Failed to resolve date.');
     }
   };
 
