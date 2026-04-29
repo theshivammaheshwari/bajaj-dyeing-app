@@ -105,15 +105,10 @@ export default function Calculator() {
 
     try {
       setIsSending(true);
-      const activeDate = await AsyncStorage.getItem('active_working_date');
+      let activeDate = await AsyncStorage.getItem('active_working_date');
       
       if (!activeDate) {
-        showAlert(
-          'Date Required', 
-          'Please go to Daily Tasks page and select/filter a date before sending tasks.'
-        );
-        setIsSending(false);
-        return;
+        activeDate = new Date().toISOString().split('T')[0];
       }
 
       // Fetch current task for this date
@@ -126,6 +121,7 @@ export default function Calculator() {
       cart.forEach(item => {
         const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
         const newTask = {
+          id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
           shade_id: item.id.split('-')[0], // Extract shade id from cart item id
           shade_number: item.shadeNumber,
           springs_2ply: parseInt(item.twoP || '0'),

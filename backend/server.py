@@ -105,6 +105,7 @@ class UserCart(BaseModel):
 
 
 class MachineTask(BaseModel):
+    id: Optional[str] = None
     shade_id: str
     shade_number: str
     springs_2ply: int
@@ -605,7 +606,7 @@ async def get_whatsapp_text(task_id: str):
 async def update_machine_task(
     task_id: str,
     machine_id: str,
-    task_index: int,
+    machine_task_id: str,
     ply2_weight: Optional[float] = None,
     ply3_weight: Optional[float] = None,
     start_time: Optional[str] = None,
@@ -619,8 +620,25 @@ async def update_machine_task(
             raise HTTPException(status_code=404, detail="Daily task not found")
         
         machine_tasks = daily_task.get(machine_id, [])
-        if task_index >= len(machine_tasks):
-            raise HTTPException(status_code=404, detail="Task index not found")
+        
+        # Find task by id instead of index
+        task_index = -1
+        for i, t in enumerate(machine_tasks):
+            if t.get('id') == machine_task_id:
+                task_index = i
+                break
+                
+        # Fallback to index if not found by ID (for legacy tasks without IDs)
+        if task_index == -1:
+            try:
+                idx = int(machine_task_id)
+                if 0 <= idx < len(machine_tasks):
+                    task_index = idx
+            except ValueError:
+                pass
+                
+        if task_index == -1:
+            raise HTTPException(status_code=404, detail="Machine task not found")
         
         # Update task fields - handle reset (empty string means reset to null)
         if ply2_weight is not None:

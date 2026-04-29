@@ -48,6 +48,7 @@ export default function DyeingMaster() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: { ply2: string; ply3: string } }>({});
   const [activeTab, setActiveTab] = useState<'manual' | 'automatic'>('manual');
+  const [isUpdating, setIsUpdating] = useState<{ [taskId: string]: boolean }>({});
   const [assigningMachine, setAssigningMachine] = useState<{ [key: number]: string }>({});
   
   const handleLogout = async () => {
@@ -227,90 +228,95 @@ export default function DyeingMaster() {
     }
   };
 
-  const updateLocalWeight = (machineId: string, taskIndex: number, field: 'ply2' | 'ply3', value: string) => {
-    const key = `${machineId}-${taskIndex}`;
+  const updateLocalWeight = (machineId: string, taskId: string, field: 'ply2' | 'ply3', value: string) => {
+    const key = `${machineId}-${taskId}`;
     setWeightInputs(prev => ({
       ...prev,
       [key]: { ...prev[key], [field]: value },
     }));
   };
 
-  const saveWeight = async (machineId: string, taskIndex: number, field: 'ply2' | 'ply3') => {
-    const key = `${machineId}-${taskIndex}`;
+  const saveWeight = async (machineId: string, taskId: string, field: 'ply2' | 'ply3') => {
+    const key = `${machineId}-${taskId}`;
     const value = weightInputs[key]?.[field] || '0';
     const numValue = parseFloat(value) || 0;
     const apiField = field === 'ply2' ? 'ply2_weight' : 'ply3_weight';
-    await updateTaskField(machineId, taskIndex, apiField, numValue);
+    await updateTaskFields(machineId, taskId, { [apiField]: numValue });
   };
 
-  const updateTaskField = async (machineId: string, taskIndex: number, field: string, value: any) => {
+  const updateTaskFields = async (machineId: string, taskId: string, updates: Record<string, any>) => {
+    if (isUpdating[taskId]) return;
     try {
+      setIsUpdating(prev => ({ ...prev, [taskId]: true }));
+      
+      // Optimistic Update
+      setDailyTask((prev: any) => {
+        if (!prev) return prev;
+        const newTasks = [...(prev[machineId] || [])];
+        const taskIndex = newTasks.findIndex((t: any) => t.id === taskId);
+        
+        // Fallback to index if no ID found (for backward compatibility)
+        let actualIndex = taskIndex;
+        if (taskIndex === -1 && !isNaN(parseInt(taskId))) {
+           actualIndex = parseInt(taskId);
+        }
+
+        if (actualIndex !== -1 && actualIndex < newTasks.length) {
+          newTasks[actualIndex] = { ...newTasks[actualIndex], ...updates };
+        }
+        return { ...prev, [machineId]: newTasks };
+      });
+
       const params = new URLSearchParams({
         machine_id: machineId,
-        task_index: taskIndex.toString(),
-        [field]: value.toString(),
+        machine_task_id: taskId,
       });
-      await fetch(
-        `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${params}`,
+      Object.keys(updates).forEach(k => params.append(k, updates[k].toString()));
+
+      const res = await fetch(
+        `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${params.toString()}`,
         { method: 'PUT' }
       );
+      if (!res.ok) throw new Error('Update failed');
+      // Background fetch to ensure consistency later
       fetchTodayTask();
     } catch (error) {
       console.error('Error updating:', error);
       showAlert('Error', 'Update failed');
+      fetchTodayTask(); // Revert optimistic UI on failure
+    } finally {
+      setIsUpdating(prev => ({ ...prev, [taskId]: false }));
     }
   };
 
-  const startTask = (machineId: string, taskIndex: number) => {
+  const startTask = (machineId: string, taskId: string) => {
     const time = new Date().toISOString();
-    updateTaskField(machineId, taskIndex, 'start_time', time);
-    updateTaskField(machineId, taskIndex, 'status', 'in-progress');
+    updateTaskFields(machineId, taskId, { start_time: time, status: 'in-progress' });
   };
 
-  const completeTask = (machineId: string, taskIndex: number) => {
+  const completeTask = (machineId: string, taskId: string) => {
     const time = new Date().toISOString();
-    updateTaskField(machineId, taskIndex, 'end_time', time);
-    updateTaskField(machineId, taskIndex, 'status', 'completed');
+    updateTaskFields(machineId, taskId, { end_time: time, status: 'completed' });
   };
 
-  const rejectTask = (machineId: string, taskIndex: number) => {
+  const rejectTask = (machineId: string, taskId: string) => {
     showConfirm('Reject Lot', 'Are you sure this lot is damaged/rejected?', () => {
       const time = new Date().toISOString();
-      updateTaskField(machineId, taskIndex, 'end_time', time);
-      updateTaskField(machineId, taskIndex, 'status', 'rejected');
+      updateTaskFields(machineId, taskId, { end_time: time, status: 'rejected' });
     });
   };
 
-  const revokeTask = async (machineId: string, taskIndex: number, taskStatus: string) => {
+  const revokeTask = async (machineId: string, taskId: string, taskStatus: string) => {
     const message =
       taskStatus === 'completed'
         ? 'Undo this completed task? It will go back to pending.'
         : 'Reset this task? All progress will be cleared.';
 
     showConfirm('Reset Task', message, async () => {
-      try {
-        const resetParams = new URLSearchParams({
-          machine_id: machineId,
-          task_index: taskIndex.toString(),
-          status: 'pending',
-        });
-
-        const response = await fetch(
-          `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${dailyTask.id}/update-machine-task?${resetParams}`,
-          { method: 'PUT' }
-        );
-
-        if (!response.ok) throw new Error('Failed to reset task');
-
-        const key = `${machineId}-${taskIndex}`;
-        setWeightInputs(prev => ({ ...prev, [key]: { ply2: '', ply3: '' } }));
-
-        await fetchTodayTask();
-        showAlert('Success', 'Task reset to pending');
-      } catch (error) {
-        console.error('Reset error:', error);
-        showAlert('Error', 'Failed to reset task: ' + error);
-      }
+      await updateTaskFields(machineId, taskId, { status: 'pending' });
+      const key = `${machineId}-${taskId}`;
+      setWeightInputs(prev => ({ ...prev, [key]: { ply2: '', ply3: '' } }));
+      showAlert('Success', 'Task reset to pending');
     });
   };
 
@@ -460,7 +466,9 @@ export default function DyeingMaster() {
                     const task = tasks[rowIndex];
                     const targetMachineForApi = activeTab === 'manual' ? machine.id : 'automatic_tasks';
                     const targetIndexForApi = activeTab === 'manual' ? rowIndex : (task ? task.originalIndex : 0);
-                    const weightInputKey = `${targetMachineForApi}-${targetIndexForApi}`;
+                    const taskIdForApi = task ? (task.id || targetIndexForApi.toString()) : targetIndexForApi.toString();
+                    const weightInputKey = `${targetMachineForApi}-${taskIdForApi}`;
+                    const updating = isUpdating[taskIdForApi];
                     return (
                       <View
                         key={machine.id}
@@ -468,6 +476,7 @@ export default function DyeingMaster() {
                           styles.gridCell,
                           { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow },
                           task ? { backgroundColor: getStatusBg(task.status) } : null,
+                          updating && { opacity: 0.6 }
                         ]}
                       >
                         {task ? (
@@ -513,11 +522,12 @@ export default function DyeingMaster() {
                                       { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
                                     ]}
                                     value={weightInputs[weightInputKey]?.ply2 || ''}
-                                    onChangeText={val => updateLocalWeight(targetMachineForApi, targetIndexForApi, 'ply2', val)}
-                                    onBlur={() => saveWeight(targetMachineForApi, targetIndexForApi, 'ply2')}
+                                    onChangeText={val => updateLocalWeight(targetMachineForApi, taskIdForApi, 'ply2', val)}
+                                    onBlur={() => saveWeight(targetMachineForApi, taskIdForApi, 'ply2')}
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
+                                    editable={!updating}
                                   />
                                 </View>
                                 <View style={styles.weightInputWrap}>
@@ -528,11 +538,12 @@ export default function DyeingMaster() {
                                       { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border },
                                     ]}
                                     value={weightInputs[weightInputKey]?.ply3 || ''}
-                                    onChangeText={val => updateLocalWeight(targetMachineForApi, targetIndexForApi, 'ply3', val)}
-                                    onBlur={() => saveWeight(targetMachineForApi, targetIndexForApi, 'ply3')}
+                                    onChangeText={val => updateLocalWeight(targetMachineForApi, taskIdForApi, 'ply3', val)}
+                                    onBlur={() => saveWeight(targetMachineForApi, taskIdForApi, 'ply3')}
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
+                                    editable={!updating}
                                   />
                                 </View>
                               </View>
@@ -543,7 +554,8 @@ export default function DyeingMaster() {
                                   task.status !== 'rejected' && (
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
-                                      onPress={() => startTask(targetMachineForApi, targetIndexForApi)}
+                                      onPress={() => startTask(targetMachineForApi, taskIdForApi)}
+                                      disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>Start</Text>
                                     </TouchableOpacity>
@@ -552,19 +564,22 @@ export default function DyeingMaster() {
                                   <View style={styles.progressActions}>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.success }]}
-                                      onPress={() => completeTask(targetMachineForApi, targetIndexForApi)}
+                                      onPress={() => completeTask(targetMachineForApi, taskIdForApi)}
+                                      disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>✓</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
-                                      onPress={() => rejectTask(targetMachineForApi, targetIndexForApi)}
+                                      onPress={() => rejectTask(targetMachineForApi, taskIdForApi)}
+                                      disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>✕</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
-                                      onPress={() => revokeTask(targetMachineForApi, targetIndexForApi, task.status)}
+                                      onPress={() => revokeTask(targetMachineForApi, taskIdForApi, task.status)}
+                                      disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>↺</Text>
                                     </TouchableOpacity>
@@ -573,7 +588,8 @@ export default function DyeingMaster() {
                                 {(task.status === 'completed' || task.status === 'rejected') && (
                                   <TouchableOpacity
                                     style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
-                                    onPress={() => revokeTask(targetMachineForApi, targetIndexForApi, task.status)}
+                                    onPress={() => revokeTask(targetMachineForApi, taskIdForApi, task.status)}
+                                    disabled={updating}
                                   >
                                     <Text style={styles.actionButtonText}>Reset</Text>
                                   </TouchableOpacity>

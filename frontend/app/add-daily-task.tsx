@@ -327,6 +327,7 @@ export default function AddDailyTask() {
           const ply2 = parseInt(task.springs2ply) || 0;
           const ply3 = parseInt(task.springs3ply) || 0;
           validTasks.push({
+            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
             shade_id: task.shadeId,
             shade_number: task.shadeNumber,
             springs_2ply: ply2,
@@ -399,6 +400,7 @@ export default function AddDailyTask() {
       const data = await getRes.json();
 
       const newAutoTasks = autoAssignRows.map(row => ({
+        id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
         shade_id: row.shadeId,
         shade_number: row.shadeNumber,
         springs_2ply: parseInt(row.springs2ply) || 0,
