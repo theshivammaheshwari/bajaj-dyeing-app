@@ -87,6 +87,8 @@ export default function Calculator() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showAssignDateModal, setShowAssignDateModal] = useState(false);
+  const [assignDate, setAssignDate] = useState<string>('');
 
   const showAlert = (title: string, message: string, onOk?: () => void) => {
     if (Platform.OS === 'web') {
@@ -102,112 +104,96 @@ export default function Calculator() {
       showAlert('Empty Cart', 'Please add recipes to the cart first.');
       return;
     }
+    
+    // Set initial date
+    let activeDate = await AsyncStorage.getItem('active_working_date');
+    const today = new Date().toISOString().split('T')[0];
+    setAssignDate(activeDate || today);
+    setShowAssignDateModal(true);
+  };
 
-    const processTaskSending = async (targetDate: string) => {
-      try {
-        setIsSending(true);
-        // Fetch current task for this date
-        const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${targetDate}`);
-        const data = await response.json();
-        
-        let existingTask = data.id ? data : { date: targetDate, m1: [], m2: [], m3: [], m4: [], m5: [], automatic_tasks: [] };
-
-        // Map cart items to machine tasks
-        cart.forEach(item => {
-          const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
-          const newTask = {
-            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
-            shade_id: item.id.split('-')[0], // Extract shade id from cart item id
-            shade_number: item.shadeNumber,
-            springs_2ply: parseInt(item.twoP || '0'),
-            springs_3ply: parseInt(item.threeP || '0'),
-            weight: item.weight,
-            status: 'pending',
-            type: 'manual',
-            machine: item.machine
-          };
-
-          if (existingTask[machineKey]) {
-            existingTask[machineKey].push(newTask);
-          } else {
-            existingTask[machineKey] = [newTask];
-          }
-        });
-
-        // Save updated task
-        const saveMethod = existingTask.id ? 'PUT' : 'POST';
-        const saveUrl = existingTask.id 
-          ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${existingTask.id}`
-          : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
-
-        const saveResponse = await fetch(saveUrl, {
-          method: saveMethod,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(existingTask),
-        });
-
-        if (saveResponse.ok) {
-          if (Platform.OS === 'web') {
-            const confirmClear = window.confirm(`Tasks successfully assigned to ${targetDate}!\n\nDo you want to CLEAR the cart now?`);
-            if (confirmClear) clearCart();
-          } else {
-            Alert.alert(
-              'Success', 
-              `Tasks successfully assigned to ${targetDate}!`,
-              [
-                { text: 'Clear Cart', onPress: () => clearCart() },
-                { text: 'Keep Cart', style: 'cancel' }
-              ]
-            );
-          }
-        } else {
-          const error = await saveResponse.json();
-          throw new Error(error.detail || 'Failed to save tasks');
-        }
-
-      } catch (error: any) {
-        showAlert('Error', error.message || 'Something went wrong while sending tasks.');
-      } finally {
-        setIsSending(false);
-      }
-    };
+  const processTaskSending = async () => {
+    if (!assignDate) {
+      showAlert('Error', 'Please select an assignment date.');
+      return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (assignDate < today) {
+      showAlert('Error', 'Cannot assign tasks to past dates.');
+      return;
+    }
 
     try {
-      let activeDate = await AsyncStorage.getItem('active_working_date');
-      const today = new Date().toISOString().split('T')[0];
+      setIsSending(true);
+      setShowAssignDateModal(false);
       
-      if (!activeDate) {
-        activeDate = today;
-      }
+      // Save the date as active working date
+      await AsyncStorage.setItem('active_working_date', assignDate);
 
-      if (activeDate !== today) {
+      // Fetch current task for this date
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${assignDate}`);
+      const data = await response.json();
+      
+      let existingTask = data.id ? data : { date: assignDate, m1: [], m2: [], m3: [], m4: [], m5: [], automatic_tasks: [] };
+
+      // Map cart items to machine tasks
+      cart.forEach(item => {
+        const machineKey = item.machine.toLowerCase() as 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
+        const newTask = {
+          id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 11),
+          shade_id: item.id.split('-')[0], // Extract shade id from cart item id
+          shade_number: item.shadeNumber,
+          springs_2ply: parseInt(item.twoP || '0'),
+          springs_3ply: parseInt(item.threeP || '0'),
+          weight: item.weight,
+          status: 'pending',
+          type: 'cart-assigned',
+          machine: item.machine
+        };
+
+        if (existingTask[machineKey]) {
+          existingTask[machineKey].push(newTask);
+        } else {
+          existingTask[machineKey] = [newTask];
+        }
+      });
+
+      // Save updated task
+      const saveMethod = existingTask.id ? 'PUT' : 'POST';
+      const saveUrl = existingTask.id 
+        ? `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${existingTask.id}`
+        : `${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks`;
+
+      const saveResponse = await fetch(saveUrl, {
+        method: saveMethod,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(existingTask),
+      });
+
+      if (saveResponse.ok) {
         if (Platform.OS === 'web') {
-          const useActive = window.confirm(`Send tasks to previously selected date: ${activeDate}?\n\nClick OK for ${activeDate}\nClick Cancel for Today (${today})`);
-          if (useActive) {
-            await processTaskSending(activeDate);
-          } else {
-            await AsyncStorage.setItem('active_working_date', today);
-            await processTaskSending(today);
-          }
+          const confirmClear = window.confirm(`Tasks successfully assigned to ${assignDate}!\n\nDo you want to CLEAR the cart now?`);
+          if (confirmClear) clearCart();
         } else {
           Alert.alert(
-            'Confirm Date',
-            `Send tasks to previously selected date: ${activeDate}?`,
+            'Success', 
+            `Tasks successfully assigned to ${assignDate}!`,
             [
-              { text: `Use Today (${today})`, onPress: async () => {
-                await AsyncStorage.setItem('active_working_date', today);
-                await processTaskSending(today);
-              }},
-              { text: `Use ${activeDate}`, onPress: () => processTaskSending(activeDate as string) }
+              { text: 'Clear Cart', onPress: () => clearCart() },
+              { text: 'Keep Cart', style: 'cancel' }
             ]
           );
         }
       } else {
-        await processTaskSending(today);
+        const error = await saveResponse.json();
+        throw new Error(error.detail || 'Failed to save tasks');
       }
-    } catch (error) {
-      console.error('Error resolving date:', error);
-      showAlert('Error', 'Failed to resolve date.');
+
+    } catch (error: any) {
+      showAlert('Error', error.message || 'Something went wrong while sending tasks.');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -1142,6 +1128,60 @@ export default function Calculator() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Selection Modal */}
+      <Modal visible={showAssignDateModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.cartModal, { backgroundColor: colors.background, padding: 24, maxWidth: 400 }]}>
+            <Text style={[styles.cartTitle, { color: colors.text, marginBottom: 20, textAlign: 'center' }]}>
+              Select Assignment Date
+            </Text>
+            
+            <View style={{ marginBottom: 24 }}>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8, fontWeight: '600' }}>
+                Assignment Date
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1.5,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 16,
+                  color: colors.text,
+                  backgroundColor: colors.inputBackground,
+                  textAlign: 'center',
+                  fontWeight: 'bold'
+                }}
+                value={assignDate}
+                onChangeText={setAssignDate}
+                placeholder="YYYY-MM-DD"
+              />
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8, textAlign: 'center' }}>
+                Format: YYYY-MM-DD
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center' }}
+                onPress={() => setShowAssignDateModal(false)}
+              >
+                <Text style={{ color: '#475569', fontSize: 15, fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.success, alignItems: 'center', opacity: isSending ? 0.7 : 1 }}
+                onPress={processTaskSending}
+                disabled={isSending}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>
+                  {isSending ? 'Sending...' : 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
