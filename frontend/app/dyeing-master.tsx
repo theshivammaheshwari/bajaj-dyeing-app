@@ -501,8 +501,8 @@ export default function DyeingMaster() {
                       >
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
-                            <View style={[styles.cellHeader, { paddingBottom: 6, marginBottom: 6, borderBottomWidth: editingShade === taskIdForApi ? 0 : 1 }]}>
-                              {editingShade === taskIdForApi ? (
+                            <View style={[styles.cellHeader, { paddingBottom: 6, marginBottom: 6, borderBottomWidth: editingShade === weightInputKey ? 0 : 1 }]}>
+                              {editingShade === weightInputKey ? (
                                 <View style={{ flexDirection: 'column', width: '100%' }}>
                                   <TextInput
                                     style={{ 
@@ -546,28 +546,30 @@ export default function DyeingMaster() {
                                     </Text>
                                     <TouchableOpacity onPress={() => {
                                       setEditingShadeText(task.shade_number);
-                                      setEditingShade(taskIdForApi);
+                                      setEditingShade(weightInputKey);
                                     }} style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e2e8f0', borderRadius: 6 }}>
                                       <Text style={{ color: '#475569', fontSize: 11, fontWeight: 'bold' }}>EDIT</Text>
                                     </TouchableOpacity>
                                   </View>
 
-                                  <View style={styles.statusToggle}>
-                                    <Text
-                                      style={[
-                                        styles.statusIndicator,
-                                        { color: getStatusColor(task.status) },
-                                      ]}
-                                    >
-                                      {task.status === 'completed'
-                                        ? '✓'
-                                        : task.status === 'rejected'
-                                        ? '✕'
-                                        : task.status === 'in-progress'
-                                        ? '●'
-                                        : '○'}
-                                    </Text>
-                                  </View>
+                                  {editingShade !== weightInputKey && (
+                                    <View style={styles.statusToggle}>
+                                      <Text
+                                        style={[
+                                          styles.statusIndicator,
+                                          { color: getStatusColor(task.status) },
+                                        ]}
+                                      >
+                                        {task.status === 'completed'
+                                          ? '✓'
+                                          : task.status === 'rejected'
+                                          ? '✕'
+                                          : task.status === 'in-progress'
+                                          ? '●'
+                                          : '○'}
+                                      </Text>
+                                    </View>
+                                  )}
                                 </>
                               )}
                             </View>
