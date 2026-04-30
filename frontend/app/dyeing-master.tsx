@@ -501,39 +501,40 @@ export default function DyeingMaster() {
                       >
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
-                            <View style={[styles.cellHeader, { paddingBottom: 6, marginBottom: 6 }]}>
+                            <View style={[styles.cellHeader, { paddingBottom: 6, marginBottom: 6, borderBottomWidth: editingShade === taskIdForApi ? 0 : 1 }]}>
                               {editingShade === taskIdForApi ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
+                                <View style={{ flexDirection: 'column', width: '100%' }}>
                                   <TextInput
                                     style={{ 
                                       color: colors.text, 
                                       backgroundColor: '#fff', 
                                       borderColor: colors.primary, 
                                       borderWidth: 1.5, 
-                                      borderRadius: 6, 
-                                      flex: 1, 
-                                      height: 34, 
-                                      paddingHorizontal: 8, 
+                                      borderRadius: 8, 
+                                      width: '100%',
+                                      height: 36, 
+                                      paddingHorizontal: 10, 
                                       fontSize: 16, 
-                                      fontWeight: 'bold' 
+                                      fontWeight: 'bold',
+                                      marginBottom: 8
                                     }}
                                     value={editingShadeText}
                                     onChangeText={setEditingShadeText}
                                     autoFocus
                                     placeholder="Lot #"
                                   />
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                                    <TouchableOpacity 
-                                      onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} 
-                                      style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#16a34a', borderRadius: 6, marginRight: 4 }}
-                                    >
-                                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✓</Text>
-                                    </TouchableOpacity>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                     <TouchableOpacity 
                                       onPress={() => setEditingShade(null)} 
-                                      style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#dc2626', borderRadius: 6 }}
+                                      style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#f1f5f9', borderRadius: 6, flex: 0.48, alignItems: 'center' }}
                                     >
-                                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✕</Text>
+                                      <Text style={{ color: '#475569', fontSize: 13, fontWeight: 'bold' }}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                      onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} 
+                                      style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#16a34a', borderRadius: 6, flex: 0.48, alignItems: 'center' }}
+                                    >
+                                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>Save</Text>
                                     </TouchableOpacity>
                                   </View>
                                 </View>
