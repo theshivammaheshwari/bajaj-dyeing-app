@@ -501,53 +501,53 @@ export default function DyeingMaster() {
                       >
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
-                            <View style={[styles.cellHeader, { paddingBottom: 4, marginBottom: 4 }]}>
+                            <View style={[styles.cellHeader, { paddingBottom: 4, marginBottom: 4, width: '100%' }]}>
                               {editingShade === taskIdForApi ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 4 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
                                   <TextInput
-                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border, flex: 1, height: 28, paddingVertical: 0, paddingHorizontal: 6 }]}
+                                    style={{ color: colors.text, backgroundColor: '#fff', borderColor: '#cbd5e1', borderWidth: 1, borderRadius: 6, flex: 1, height: 32, paddingHorizontal: 8, fontSize: 15, fontWeight: 'bold' }}
                                     value={editingShadeText}
                                     onChangeText={setEditingShadeText}
                                     autoFocus
                                   />
-                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} style={{ marginLeft: 6 }}>
-                                    <Text style={{ color: colors.success, fontSize: 16, fontWeight: 'bold' }}>✓</Text>
+                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#dcfce7', borderRadius: 6 }}>
+                                    <Text style={{ color: '#16a34a', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
                                   </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => setEditingShade(null)} style={{ marginLeft: 6 }}>
-                                    <Text style={{ color: colors.danger, fontSize: 16, fontWeight: 'bold' }}>✕</Text>
+                                  <TouchableOpacity onPress={() => setEditingShade(null)} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
+                                    <Text style={{ color: '#dc2626', fontSize: 14, fontWeight: 'bold' }}>✕</Text>
                                   </TouchableOpacity>
                                 </View>
                               ) : (
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                  <Text style={[styles.cellShadeText, { color: colors.primary }]}>
-                                    #{task.shade_number}
-                                  </Text>
-                                  <TouchableOpacity onPress={() => {
-                                    setEditingShadeText(task.shade_number);
-                                    setEditingShade(taskIdForApi);
-                                  }} style={{ marginLeft: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 4 }}>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>EDIT</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              )}
+                                <>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                    <Text style={[styles.cellShadeText, { color: colors.primary, fontSize: 18 }]} numberOfLines={1}>
+                                      #{task.shade_number}
+                                    </Text>
+                                    <TouchableOpacity onPress={() => {
+                                      setEditingShadeText(task.shade_number);
+                                      setEditingShade(taskIdForApi);
+                                    }} style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e2e8f0', borderRadius: 6 }}>
+                                      <Text style={{ color: '#475569', fontSize: 11, fontWeight: 'bold' }}>EDIT</Text>
+                                    </TouchableOpacity>
+                                  </View>
 
-                              {editingShade !== taskIdForApi && (
-                                <View style={styles.statusToggle}>
-                                  <Text
-                                    style={[
-                                      styles.statusIndicator,
-                                      { color: getStatusColor(task.status) },
-                                    ]}
-                                  >
-                                    {task.status === 'completed'
-                                      ? '✓'
-                                      : task.status === 'rejected'
-                                      ? '✕'
-                                      : task.status === 'in-progress'
-                                      ? '●'
-                                      : '○'}
-                                  </Text>
-                                </View>
+                                  <View style={styles.statusToggle}>
+                                    <Text
+                                      style={[
+                                        styles.statusIndicator,
+                                        { color: getStatusColor(task.status) },
+                                      ]}
+                                    >
+                                      {task.status === 'completed'
+                                        ? '✓'
+                                        : task.status === 'rejected'
+                                        ? '✕'
+                                        : task.status === 'in-progress'
+                                        ? '●'
+                                        : '○'}
+                                    </Text>
+                                  </View>
+                                </>
                               )}
                             </View>
 
