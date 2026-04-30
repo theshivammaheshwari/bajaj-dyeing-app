@@ -49,6 +49,8 @@ export default function DyeingMaster() {
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: { ply2: string; ply3: string } }>({});
   const [activeTab, setActiveTab] = useState<'manual' | 'automatic'>('manual');
   const [isUpdating, setIsUpdating] = useState<{ [taskId: string]: boolean }>({});
+  const [editingShade, setEditingShade] = useState<string | null>(null);
+  const [editingShadeText, setEditingShadeText] = useState<string>('');
   const [assigningMachine, setAssigningMachine] = useState<{ [key: number]: string }>({});
   
   const handleLogout = async () => {
@@ -242,6 +244,24 @@ export default function DyeingMaster() {
     const numValue = parseFloat(value) || 0;
     const apiField = field === 'ply2' ? 'ply2_weight' : 'ply3_weight';
     await updateTaskFields(machineId, taskId, { [apiField]: numValue });
+  };
+
+  const saveShadeNumber = async (machineId: string, taskId: string, originalShade: string) => {
+    if (!editingShadeText.trim()) {
+      showAlert('Error', 'Shade number cannot be empty');
+      return;
+    }
+    
+    // Only update if it actually changed
+    if (editingShadeText.trim() !== originalShade) {
+      await updateTaskFields(machineId, taskId, { 
+        shade_number: editingShadeText.trim(),
+        original_shade_number: originalShade,
+        is_modified: true
+      });
+    }
+    
+    setEditingShade(null);
   };
 
   const updateTaskFields = async (machineId: string, taskId: string, updates: Record<string, any>) => {
@@ -482,9 +502,35 @@ export default function DyeingMaster() {
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
                             <View style={styles.cellHeader}>
-                              <Text style={[styles.cellShadeText, { color: colors.primary }]}>
-                                #{task.shade_number}
-                              </Text>
+                              {editingShade === taskIdForApi ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                  <TextInput
+                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border, flex: 1, marginRight: 4, height: 24, paddingVertical: 0 }]}
+                                    value={editingShadeText}
+                                    onChangeText={setEditingShadeText}
+                                    autoFocus
+                                  />
+                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)}>
+                                    <Text style={{ color: colors.success, marginRight: 6, fontWeight: 'bold' }}>✓</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity onPress={() => setEditingShade(null)}>
+                                    <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                                  <Text style={[styles.cellShadeText, { color: colors.primary }]}>
+                                    #{task.shade_number}
+                                  </Text>
+                                  <TouchableOpacity onPress={() => {
+                                    setEditingShadeText(task.shade_number);
+                                    setEditingShade(taskIdForApi);
+                                  }} style={{ marginLeft: 6 }}>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 14 }}>✎</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+
                               <View style={styles.statusToggle}>
                                 <Text
                                   style={[
@@ -502,6 +548,22 @@ export default function DyeingMaster() {
                                 </Text>
                               </View>
                             </View>
+
+                            {/* Tags / Badges */}
+                            {(task.is_modified || task.carried_forward) && (
+                              <View style={{ flexDirection: 'column', marginBottom: 4, marginTop: -4 }}>
+                                {task.is_modified && (
+                                  <Text style={{ fontSize: 10, color: '#D97706', backgroundColor: '#FEF3C7', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 2 }}>
+                                    Changed from #{task.original_shade_number}
+                                  </Text>
+                                )}
+                                {task.carried_forward && (
+                                  <Text style={{ fontSize: 10, color: '#2563EB', backgroundColor: '#DBEAFE', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' }}>
+                                    Carried Forward ({task.original_date})
+                                  </Text>
+                                )}
+                              </View>
+                            )}
 
                             <View style={styles.summaryWeights}>
                               <Text style={[styles.summaryWeightText, { color: colors.text }]}>

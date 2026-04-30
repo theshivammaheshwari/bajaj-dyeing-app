@@ -108,6 +108,11 @@ class MachineTask(BaseModel):
     id: Optional[str] = None
     shade_id: str
     shade_number: str
+    original_shade_number: Optional[str] = None
+    updated_shade_number: Optional[str] = None
+    is_modified: Optional[bool] = False
+    carried_forward: Optional[bool] = False
+    original_date: Optional[str] = None
     springs_2ply: int
     springs_3ply: int
     weight: float
@@ -612,6 +617,9 @@ async def update_machine_task(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     status: Optional[str] = None,
+    shade_number: Optional[str] = None,
+    original_shade_number: Optional[str] = None,
+    is_modified: Optional[bool] = None,
 ):
     """Update a specific machine task (weight, timing, status)"""
     try:
@@ -655,6 +663,12 @@ async def update_machine_task(
             if status == 'pending':
                 machine_tasks[task_index]["start_time"] = None
                 machine_tasks[task_index]["end_time"] = None
+        if shade_number is not None:
+            machine_tasks[task_index]["shade_number"] = shade_number
+        if original_shade_number is not None:
+            machine_tasks[task_index]["original_shade_number"] = original_shade_number
+        if is_modified is not None:
+            machine_tasks[task_index]["is_modified"] = is_modified
         
         # Update in database
         await db.daily_tasks.update_one(
@@ -752,6 +766,11 @@ async def rollover_pending_tasks(from_date: str, to_date: str):
             pending_tasks = [t for t in source_tasks if t.get('status', 'pending') == 'pending']
             
             if pending_tasks:
+                for task in pending_tasks:
+                    task["carried_forward"] = True
+                    if "original_date" not in task or not task["original_date"]:
+                        task["original_date"] = from_date
+
                 if to_task:
                     # PREPEND to existing tasks (pending tasks first, then new tasks)
                     existing_tasks = to_task.get(machine_id, [])
@@ -783,6 +802,11 @@ async def rollover_pending_tasks(from_date: str, to_date: str):
         source_auto_tasks = from_task.get("automatic_tasks", [])
         pending_auto_tasks = [t for t in source_auto_tasks if t.get('status', 'pending') == 'pending']
         if pending_auto_tasks:
+            for task in pending_auto_tasks:
+                task["carried_forward"] = True
+                if "original_date" not in task or not task["original_date"]:
+                    task["original_date"] = from_date
+
             if to_task:
                 existing_auto = to_task.get("automatic_tasks", [])
                 updated_auto = pending_auto_tasks + existing_auto
