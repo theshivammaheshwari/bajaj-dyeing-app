@@ -474,7 +474,11 @@ export default function DyeingMaster() {
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks found for {date}</Text>
               </View>
             ) : (
-              Array.from({ length: activeTab === 'manual' ? 5 : Math.max(...MACHINES.map(m => (dailyTask.automatic_tasks || []).filter((t:any) => t.machine === m.id).length), 1) }).map((_, rowIndex) => (
+              Array.from({ 
+                length: activeTab === 'manual' 
+                  ? Math.max(5, ...MACHINES.map(m => (dailyTask?.[m.id] || []).length)) 
+                  : Math.max(1, ...MACHINES.map(m => (dailyTask?.automatic_tasks || []).filter((t:any) => t.machine === m.id).length)) 
+              }).map((_, rowIndex) => (
                 <View key={rowIndex} style={styles.gridRow}>
                   <View style={styles.rowNumberCell}>
                     <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
