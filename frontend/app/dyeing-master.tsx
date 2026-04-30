@@ -501,65 +501,67 @@ export default function DyeingMaster() {
                       >
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
-                            <View style={styles.cellHeader}>
+                            <View style={[styles.cellHeader, { paddingBottom: 4, marginBottom: 4 }]}>
                               {editingShade === taskIdForApi ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 4 }}>
                                   <TextInput
-                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border, flex: 1, marginRight: 4, height: 24, paddingVertical: 0 }]}
+                                    style={[styles.smallInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border, flex: 1, height: 28, paddingVertical: 0, paddingHorizontal: 6 }]}
                                     value={editingShadeText}
                                     onChangeText={setEditingShadeText}
                                     autoFocus
                                   />
-                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)}>
-                                    <Text style={{ color: colors.success, marginRight: 6, fontWeight: 'bold' }}>✓</Text>
+                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} style={{ marginLeft: 6 }}>
+                                    <Text style={{ color: colors.success, fontSize: 16, fontWeight: 'bold' }}>✓</Text>
                                   </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => setEditingShade(null)}>
-                                    <Text style={{ color: colors.danger, fontWeight: 'bold' }}>✕</Text>
+                                  <TouchableOpacity onPress={() => setEditingShade(null)} style={{ marginLeft: 6 }}>
+                                    <Text style={{ color: colors.danger, fontSize: 16, fontWeight: 'bold' }}>✕</Text>
                                   </TouchableOpacity>
                                 </View>
                               ) : (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                   <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                                     #{task.shade_number}
                                   </Text>
                                   <TouchableOpacity onPress={() => {
                                     setEditingShadeText(task.shade_number);
                                     setEditingShade(taskIdForApi);
-                                  }} style={{ marginLeft: 6 }}>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 14 }}>✎</Text>
+                                  }} style={{ marginLeft: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 4 }}>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>EDIT</Text>
                                   </TouchableOpacity>
                                 </View>
                               )}
 
-                              <View style={styles.statusToggle}>
-                                <Text
-                                  style={[
-                                    styles.statusIndicator,
-                                    { color: getStatusColor(task.status) },
-                                  ]}
-                                >
-                                  {task.status === 'completed'
-                                    ? '✓'
-                                    : task.status === 'rejected'
-                                    ? '✕'
-                                    : task.status === 'in-progress'
-                                    ? '●'
-                                    : '○'}
-                                </Text>
-                              </View>
+                              {editingShade !== taskIdForApi && (
+                                <View style={styles.statusToggle}>
+                                  <Text
+                                    style={[
+                                      styles.statusIndicator,
+                                      { color: getStatusColor(task.status) },
+                                    ]}
+                                  >
+                                    {task.status === 'completed'
+                                      ? '✓'
+                                      : task.status === 'rejected'
+                                      ? '✕'
+                                      : task.status === 'in-progress'
+                                      ? '●'
+                                      : '○'}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
 
                             {/* Tags / Badges */}
                             {(task.is_modified || task.carried_forward) && (
-                              <View style={{ flexDirection: 'column', marginBottom: 4, marginTop: -4 }}>
+                              <View style={{ flexDirection: 'column', marginBottom: 6 }}>
                                 {task.is_modified && (
-                                  <Text style={{ fontSize: 10, color: '#D97706', backgroundColor: '#FEF3C7', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 2 }}>
+                                  <Text style={{ fontSize: 9, color: '#D97706', backgroundColor: '#FEF3C7', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 2, fontWeight: 'bold' }}>
                                     Changed from #{task.original_shade_number}
                                   </Text>
                                 )}
                                 {task.carried_forward && (
-                                  <Text style={{ fontSize: 10, color: '#2563EB', backgroundColor: '#DBEAFE', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' }}>
-                                    Carried Forward ({task.original_date})
+                                  <Text style={{ fontSize: 9, color: '#2563EB', backgroundColor: '#DBEAFE', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', fontWeight: 'bold' }}>
+                                    Carried Forward: {task.original_date}
                                   </Text>
                                 )}
                               </View>
