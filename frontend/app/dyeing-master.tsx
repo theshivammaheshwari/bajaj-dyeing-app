@@ -501,21 +501,41 @@ export default function DyeingMaster() {
                       >
                         {task ? (
                           <View style={{ flex: 1, flexDirection: 'column' }}>
-                            <View style={[styles.cellHeader, { paddingBottom: 4, marginBottom: 4, width: '100%' }]}>
+                            <View style={[styles.cellHeader, { paddingBottom: 6, marginBottom: 6 }]}>
                               {editingShade === taskIdForApi ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
                                   <TextInput
-                                    style={{ color: colors.text, backgroundColor: '#fff', borderColor: '#cbd5e1', borderWidth: 1, borderRadius: 6, flex: 1, height: 32, paddingHorizontal: 8, fontSize: 15, fontWeight: 'bold' }}
+                                    style={{ 
+                                      color: colors.text, 
+                                      backgroundColor: '#fff', 
+                                      borderColor: colors.primary, 
+                                      borderWidth: 1.5, 
+                                      borderRadius: 6, 
+                                      flex: 1, 
+                                      height: 34, 
+                                      paddingHorizontal: 8, 
+                                      fontSize: 16, 
+                                      fontWeight: 'bold' 
+                                    }}
                                     value={editingShadeText}
                                     onChangeText={setEditingShadeText}
                                     autoFocus
+                                    placeholder="Lot #"
                                   />
-                                  <TouchableOpacity onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#dcfce7', borderRadius: 6 }}>
-                                    <Text style={{ color: '#16a34a', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
-                                  </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => setEditingShade(null)} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
-                                    <Text style={{ color: '#dc2626', fontSize: 14, fontWeight: 'bold' }}>✕</Text>
-                                  </TouchableOpacity>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                                    <TouchableOpacity 
+                                      onPress={() => saveShadeNumber(targetMachineForApi, taskIdForApi, task.shade_number)} 
+                                      style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#16a34a', borderRadius: 6, marginRight: 4 }}
+                                    >
+                                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✓</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                      onPress={() => setEditingShade(null)} 
+                                      style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#dc2626', borderRadius: 6 }}
+                                    >
+                                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✕</Text>
+                                    </TouchableOpacity>
+                                  </View>
                                 </View>
                               ) : (
                                 <>
