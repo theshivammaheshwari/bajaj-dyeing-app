@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   machineInfoCard: {
-    width: 180,
+    width: 220,
     marginHorizontal: 4,
     padding: 12,
     borderRadius: 12,
@@ -886,7 +886,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   gridCell: {
-    width: 180,
+    width: 220,
     minHeight: 120,
     marginHorizontal: 4,
     borderWidth: 1,
