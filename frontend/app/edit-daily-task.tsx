@@ -183,31 +183,27 @@ export default function EditDailyTask() {
     });
   };
 
-  const deleteRow = (rowIndex: number) => {
+  const deleteCell = (machineId: string, rowIndex: number) => {
     const doDelete = () => {
       setMachineTasks(prev => {
         const updated = { ...prev };
-        MACHINES.forEach(machine => {
-          updated[machine.id] = prev[machine.id].filter((_, idx) => idx !== rowIndex);
-        });
-        const hasRows = updated[MACHINES[0].id].length > 0;
-        if (!hasRows) {
-          MACHINES.forEach(machine => {
-            updated[machine.id] = [emptyTask(machine.id, 0)];
-          });
-        }
+        updated[machineId] = prev[machineId].map((task, idx) => 
+          idx === rowIndex ? emptyTask(machineId, rowIndex) : task
+        );
         return updated;
       });
-      setActiveTask(null);
+      if (activeTask?.machineId === machineId && activeTask?.taskId === `${machineId}-${rowIndex}`) {
+        setActiveTask(null);
+      }
     };
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`Are you sure you want to delete Task ${rowIndex + 1}?`);
+      const confirmed = window.confirm(`Are you sure you want to remove this task from ${machineId.toUpperCase()}?`);
       if (confirmed) doDelete();
     } else {
-      Alert.alert('Delete Task', `Are you sure you want to delete Task ${rowIndex + 1}?`, [
+      Alert.alert('Remove Task', `Are you sure you want to remove this task from ${machineId.toUpperCase()}?`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: doDelete },
+        { text: 'Remove', style: 'destructive', onPress: doDelete },
       ]);
     }
   };
@@ -341,12 +337,6 @@ export default function EditDailyTask() {
                 <View key={rowIndex} style={[styles.gridRow, { zIndex: maxRows - rowIndex }]}>
                   <View style={styles.rowNumberCell}>
                     <Text style={[styles.rowNumberText, { color: colors.textSecondary }]}>{rowIndex + 1}</Text>
-                    <TouchableOpacity
-                      style={styles.deleteRowBtn}
-                      onPress={() => deleteRow(rowIndex)}
-                    >
-                      <Text style={styles.deleteRowIcon}>🗑️</Text>
-                    </TouchableOpacity>
                   </View>
                   {MACHINES.map(machine => {
                     const task = machineTasks[machine.id][rowIndex];
@@ -370,26 +360,38 @@ export default function EditDailyTask() {
                       >
                         {task ? (
                           <>
-                            <TouchableOpacity
-                              style={styles.cellHeader}
-                              onPress={() => {
-                                setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
-                              }}
-                            >
-                              <Text
-                                numberOfLines={1}
-                                style={[
-                                  styles.cellShadeText,
-                                  { color: colors.textSecondary },
-                                  task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null,
-                                ]}
+                            <View style={styles.cellHeader}>
+                              <TouchableOpacity
+                                style={{ flex: 1, marginRight: 8 }}
+                                onPress={() => {
+                                  setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
+                                }}
                               >
-                                {task.shadeNumber ? `#${task.shadeNumber}` : 'Select Shade'}
-                              </Text>
-                              {!isActive && (
-                                <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✎</Text>
-                              )}
-                            </TouchableOpacity>
+                                <Text
+                                  numberOfLines={1}
+                                  style={[
+                                    styles.cellShadeText,
+                                    { color: colors.textSecondary },
+                                    task.shadeNumber ? [styles.filledText, { color: colors.primary }] : null,
+                                  ]}
+                                >
+                                  {task.shadeNumber ? `#${task.shadeNumber}` : 'Select Shade'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                {!isActive && (
+                                  <TouchableOpacity onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}>
+                                    <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✎</Text>
+                                  </TouchableOpacity>
+                                )}
+                                {!!task.shadeId && !isActive && (
+                                  <TouchableOpacity onPress={() => deleteCell(machine.id, rowIndex)}>
+                                    <Text style={{ fontSize: 14 }}>🗑️</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
 
                             {isActive ? (
                               <View style={styles.inlineEditor}>
