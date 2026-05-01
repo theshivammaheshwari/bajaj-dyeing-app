@@ -120,6 +120,7 @@ class MachineTask(BaseModel):
     ply3_weight: Optional[float] = 0  # Weight in kg
     start_time: Optional[str] = None  # ISO format
     end_time: Optional[str] = None    # ISO format
+    duration: Optional[str] = None    # e.g., "45 min" or "1h 20m"
     status: Optional[str] = "pending"  # pending/in-progress/completed/rejected
     type: Optional[str] = "manual"     # manual/automatic
     machine: Optional[str] = None      # M1-M5 if specifically routed
@@ -616,6 +617,7 @@ async def update_machine_task(
     ply3_weight: Optional[float] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
+    duration: Optional[str] = None,
     status: Optional[str] = None,
     shade_number: Optional[str] = None,
     original_shade_number: Optional[str] = None,
@@ -657,12 +659,15 @@ async def update_machine_task(
             machine_tasks[task_index]["start_time"] = start_time if start_time else None
         if end_time is not None:
             machine_tasks[task_index]["end_time"] = end_time if end_time else None
+        if duration is not None:
+            machine_tasks[task_index]["duration"] = duration if duration else None
         if status is not None:
             machine_tasks[task_index]["status"] = status
             # Automatically clear times when resetting to pending
             if status == 'pending':
                 machine_tasks[task_index]["start_time"] = None
                 machine_tasks[task_index]["end_time"] = None
+                machine_tasks[task_index]["duration"] = None
         if shade_number is not None:
             machine_tasks[task_index]["shade_number"] = shade_number
         if original_shade_number is not None:

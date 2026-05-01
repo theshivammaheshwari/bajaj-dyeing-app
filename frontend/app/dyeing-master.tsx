@@ -39,6 +39,28 @@ const showConfirm = (title: string, message: string, onConfirm: () => void) => {
   }
 };
 
+const LiveTimer = ({ startTime }: { startTime: string }) => {
+  const [duration, setDuration] = useState('');
+
+  useEffect(() => {
+    if (!startTime) return;
+    
+    const updateTimer = () => {
+      const diff = new Date().getTime() - new Date(startTime).getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const remainingMin = minutes % 60;
+      setDuration(hours > 0 ? `${hours}h ${remainingMin}m` : `${minutes}m`);
+    };
+
+    updateTimer(); // Initial call
+    const interval = setInterval(updateTimer, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <Text style={{ color: '#d97706', fontSize: 12, fontWeight: 'bold' }}>⏱️ {duration}</Text>;
+};
+
 export default function DyeingMaster() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -309,20 +331,47 @@ export default function DyeingMaster() {
     }
   };
 
+  const calculateDurationString = (start: string, end: string) => {
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const remainingMin = minutes % 60;
+    return hours > 0 ? `${hours}h ${remainingMin}m` : `${minutes} min`;
+  };
+
+  const formatTime = (isoString?: string | null) => {
+    if (!isoString) return '--:--';
+    const d = new Date(isoString);
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
   const startTask = (machineId: string, taskId: string) => {
     const time = new Date().toISOString();
     updateTaskFields(machineId, taskId, { start_time: time, status: 'in-progress' });
   };
 
-  const completeTask = (machineId: string, taskId: string) => {
+  const completeTask = (machineId: string, taskId: string, startTime?: string) => {
     const time = new Date().toISOString();
-    updateTaskFields(machineId, taskId, { end_time: time, status: 'completed' });
+    let payload: any = { end_time: time, status: 'completed' };
+    if (startTime) {
+      payload.duration = calculateDurationString(startTime, time);
+    }
+    updateTaskFields(machineId, taskId, payload);
   };
 
-  const rejectTask = (machineId: string, taskId: string) => {
+  const rejectTask = (machineId: string, taskId: string, startTime?: string) => {
     showConfirm('Reject Lot', 'Are you sure this lot is damaged/rejected?', () => {
       const time = new Date().toISOString();
-      updateTaskFields(machineId, taskId, { end_time: time, status: 'rejected' });
+      let payload: any = { end_time: time, status: 'rejected' };
+      if (startTime) {
+        payload.duration = calculateDurationString(startTime, time);
+      }
+      updateTaskFields(machineId, taskId, payload);
     });
   };
 
@@ -603,6 +652,26 @@ export default function DyeingMaster() {
                               </Text>
                             </View>
 
+                            {/* Time Tracking */}
+                            {(task.start_time || task.end_time || task.duration) && (
+                              <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                                {task.start_time && (
+                                  <Text style={{ fontSize: 11, color: '#475569', marginBottom: 2 }}>Start: <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>{formatTime(task.start_time)}</Text></Text>
+                                )}
+                                {task.end_time && (
+                                  <Text style={{ fontSize: 11, color: '#475569', marginBottom: 2 }}>End: <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>{formatTime(task.end_time)}</Text></Text>
+                                )}
+                                {task.status === 'in-progress' && task.start_time && (
+                                  <LiveTimer startTime={task.start_time} />
+                                )}
+                                {task.duration && (
+                                  <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: 'bold', marginTop: 2 }}>
+                                    ✓ Taken: {task.duration}
+                                  </Text>
+                                )}
+                              </View>
+                            )}
+
                             <View style={styles.inlineEditor}>
                               <View style={styles.weightInputsContainer}>
                                 <View style={styles.weightInputWrap}>
@@ -655,14 +724,14 @@ export default function DyeingMaster() {
                                   <View style={styles.progressActions}>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.success }]}
-                                      onPress={() => completeTask(targetMachineForApi, taskIdForApi)}
+                                      onPress={() => completeTask(targetMachineForApi, taskIdForApi, task.start_time)}
                                       disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>✓</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
-                                      onPress={() => rejectTask(targetMachineForApi, taskIdForApi)}
+                                      onPress={() => rejectTask(targetMachineForApi, taskIdForApi, task.start_time)}
                                       disabled={updating}
                                     >
                                       <Text style={styles.actionButtonText}>✕</Text>
