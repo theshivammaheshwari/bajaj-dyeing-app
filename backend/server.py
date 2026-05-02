@@ -120,6 +120,7 @@ class MachineTask(BaseModel):
     ply3_weight: Optional[float] = 0  # Weight in kg
     start_time: Optional[str] = None  # ISO format
     end_time: Optional[str] = None    # ISO format
+    completed_at: Optional[str] = None # ISO format for 24h lock
     duration: Optional[str] = None    # e.g., "45 min" or "1h 20m"
     status: Optional[str] = "pending"  # pending/in-progress/completed/rejected
     type: Optional[str] = "manual"     # manual/automatic
@@ -617,6 +618,7 @@ async def update_machine_task(
     ply3_weight: Optional[float] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
+    completed_at: Optional[str] = None,
     duration: Optional[str] = None,
     status: Optional[str] = None,
     shade_number: Optional[str] = None,
@@ -659,6 +661,8 @@ async def update_machine_task(
             machine_tasks[task_index]["start_time"] = start_time if start_time else None
         if end_time is not None:
             machine_tasks[task_index]["end_time"] = end_time if end_time else None
+        if completed_at is not None:
+            machine_tasks[task_index]["completed_at"] = completed_at if completed_at else None
         if duration is not None:
             machine_tasks[task_index]["duration"] = duration if duration else None
         if status is not None:
@@ -667,6 +671,7 @@ async def update_machine_task(
             if status == 'pending':
                 machine_tasks[task_index]["start_time"] = None
                 machine_tasks[task_index]["end_time"] = None
+                machine_tasks[task_index]["completed_at"] = None
                 machine_tasks[task_index]["duration"] = None
         if shade_number is not None:
             machine_tasks[task_index]["shade_number"] = shade_number

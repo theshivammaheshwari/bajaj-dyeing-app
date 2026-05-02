@@ -104,6 +104,14 @@ export default function DailyTasks() {
     }
   };
 
+  const isTaskLocked = (completedAt?: string | null) => {
+    if (!completedAt) return false;
+    const now = new Date();
+    const completedTime = new Date(completedAt);
+    const diff = now.getTime() - completedTime.getTime();
+    return diff > 24 * 60 * 60 * 1000;
+  };
+
   const filteredTasks = dateFilter.trim()
     ? tasks.filter(t => t.date.includes(dateFilter.trim()))
     : tasks;
@@ -280,23 +288,30 @@ export default function DailyTasks() {
                             <Text style={[styles.cellShadeText, { color: colors.primary }]}>
                               #{mt.shade_number}
                             </Text>
-                            <View 
-                              style={{ 
-                                backgroundColor: mt.type === 'automatic' ? colors.success + '20' : colors.primary + '20', 
-                                paddingHorizontal: 6, 
-                                paddingVertical: 2, 
-                                borderRadius: 4 
-                              }}
-                            >
-                              <Text 
+                            <View style={{ flexDirection: 'row', gap: 4 }}>
+                              {mt.carried_forward && (
+                                <View style={{ backgroundColor: '#F59E0B', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: 'bold' }}>C/F</Text>
+                                </View>
+                              )}
+                              <View 
                                 style={{ 
-                                  fontSize: 10, 
-                                  fontWeight: 'bold', 
-                                  color: mt.type === 'automatic' ? colors.success : colors.primary 
+                                  backgroundColor: mt.type === 'automatic' ? colors.success + '20' : colors.primary + '20', 
+                                  paddingHorizontal: 6, 
+                                  paddingVertical: 2, 
+                                  borderRadius: 4 
                                 }}
                               >
-                                {mt.type === 'automatic' ? 'Auto' : 'Manual'}
-                              </Text>
+                                <Text 
+                                  style={{ 
+                                    fontSize: 10, 
+                                    fontWeight: 'bold', 
+                                    color: mt.type === 'automatic' ? colors.success : colors.primary 
+                                  }}
+                                >
+                                  {mt.type === 'automatic' ? 'Auto' : 'Manual'}
+                                </Text>
+                              </View>
                             </View>
                           </View>
                           <View style={styles.cellSummary}>

@@ -40,6 +40,13 @@ interface MachineTaskData {
   showShadeDropdown: boolean;
   shadeSearchText: string;
   error?: string;
+  completed_at?: string | null;
+  carried_forward?: boolean;
+  original_date?: string | null;
+  status?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  duration?: string | null;
 }
 
 const emptyTask = (machineId: string, index: number): MachineTaskData => ({
@@ -51,6 +58,9 @@ const emptyTask = (machineId: string, index: number): MachineTaskData => ({
   showShadeDropdown: false,
   shadeSearchText: '',
   error: '',
+  completed_at: null,
+  carried_forward: false,
+  original_date: null,
 });
 
 export default function EditDailyTask() {
@@ -109,6 +119,13 @@ export default function EditDailyTask() {
             showShadeDropdown: false,
             shadeSearchText: t.shade_number ? String(t.shade_number) : '',
             error: '',
+            completed_at: t.completed_at || null,
+            carried_forward: t.carried_forward || false,
+            original_date: t.original_date || null,
+            status: t.status || 'pending',
+            start_time: t.start_time || null,
+            end_time: t.end_time || null,
+            duration: t.duration || null,
           }));
           while (newMachineTasks[m.id].length < 5) {
             newMachineTasks[m.id].push(emptyTask(m.id, newMachineTasks[m.id].length));
@@ -131,6 +148,14 @@ export default function EditDailyTask() {
     } catch (error) {
       console.error('Error fetching shades:', error);
     }
+  };
+
+  const isTaskLocked = (completedAt?: string | null) => {
+    if (!completedAt) return false;
+    const now = new Date();
+    const completedTime = new Date(completedAt);
+    const diff = now.getTime() - completedTime.getTime();
+    return diff > 24 * 60 * 60 * 1000;
   };
 
   const updateTask = (machineId: string, taskId: string, field: string, value: string | boolean) => {
@@ -237,10 +262,19 @@ export default function EditDailyTask() {
       const tasks = machineTasks[machine.id].filter(t => t.shadeId !== '');
       if (tasks.length > 0) {
         payload[machine.id] = tasks.map(t => ({
-          shade_id: t.shadeId, shade_number: t.shadeNumber,
+          shade_id: t.shadeId, 
+          shade_number: t.shadeNumber,
           springs_2ply: parseInt(t.springs2ply) || 0,
           springs_3ply: parseInt(t.springs3ply) || 0,
           weight: machine.capacity,
+          completed_at: t.completed_at,
+          carried_forward: t.carried_forward,
+          original_date: t.original_date,
+          // Preserve other fields if they were loaded
+          status: t.status || 'pending',
+          start_time: t.start_time,
+          end_time: t.end_time,
+          duration: t.duration,
         }));
         hasData = true;
       } else { payload[machine.id] = []; }
@@ -340,6 +374,7 @@ export default function EditDailyTask() {
                   </View>
                   {MACHINES.map(machine => {
                     const task = machineTasks[machine.id][rowIndex];
+                    const locked = task ? isTaskLocked(task.completed_at) : false;
                     const isActive =
                       activeTask?.machineId === machine.id && activeTask?.taskId === task?.id;
                     const hasError = !!(task?.error);
@@ -364,7 +399,9 @@ export default function EditDailyTask() {
                               <TouchableOpacity
                                 style={{ flex: 1, marginRight: 8 }}
                                 onPress={() => {
-                                  setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
+                                  if (!locked) {
+                                    setActiveTask(isActive ? null : { machineId: machine.id, taskId: task.id });
+                                  }
                                 }}
                               >
                                 <Text
@@ -377,15 +414,23 @@ export default function EditDailyTask() {
                                 >
                                   {task.shadeNumber ? `#${task.shadeNumber}` : 'Select Shade'}
                                 </Text>
+                                {task.carried_forward && (
+                                  <View style={{ backgroundColor: '#F59E0B', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, marginTop: 4, alignSelf: 'flex-start' }}>
+                                    <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: 'bold' }}>C/F</Text>
+                                  </View>
+                                )}
                               </TouchableOpacity>
 
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                {!isActive && (
+                                {locked && (
+                                  <Text title="Locked (24h passed)" style={{ fontSize: 14 }}>🔒</Text>
+                                )}
+                                {!isActive && !locked && (
                                   <TouchableOpacity onPress={() => setActiveTask({ machineId: machine.id, taskId: task.id })}>
                                     <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✎</Text>
                                   </TouchableOpacity>
                                 )}
-                                {!!task.shadeId && !isActive && (
+                                {!!task.shadeId && !isActive && !locked && (
                                   <TouchableOpacity onPress={() => deleteCell(machine.id, rowIndex)}>
                                     <Text style={{ fontSize: 14 }}>🗑️</Text>
                                   </TouchableOpacity>
@@ -408,6 +453,7 @@ export default function EditDailyTask() {
                                     onFocus={() => updateTask(machine.id, task.id, 'showShadeDropdown', true)}
                                     keyboardType="number-pad"
                                     autoFocus
+                                    editable={!locked}
                                   />
                                   <TouchableOpacity
                                     onPress={() => setActiveTask(null)}
@@ -452,6 +498,7 @@ export default function EditDailyTask() {
                                       keyboardType="number-pad"
                                       placeholder="0"
                                       placeholderTextColor={colors.textSecondary}
+                                      editable={!locked}
                                     />
                                   </View>
                                   <View style={styles.inlinePlyInputWrap}>
@@ -467,6 +514,7 @@ export default function EditDailyTask() {
                                       keyboardType="number-pad"
                                       placeholder="0"
                                       placeholderTextColor={colors.textSecondary}
+                                      editable={!locked}
                                     />
                                   </View>
                                 </View>

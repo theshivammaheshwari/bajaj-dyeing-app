@@ -350,6 +350,14 @@ export default function DyeingMaster() {
     return `${hours}:${minutes} ${ampm}`;
   };
 
+  const isTaskLocked = (completedAt?: string | null) => {
+    if (!completedAt) return false;
+    const now = new Date();
+    const completedTime = new Date(completedAt);
+    const diff = now.getTime() - completedTime.getTime();
+    return diff > 24 * 60 * 60 * 1000;
+  };
+
   const startTask = (machineId: string, taskId: string) => {
     const time = new Date().toISOString();
     updateTaskFields(machineId, taskId, { start_time: time, status: 'in-progress' });
@@ -357,7 +365,7 @@ export default function DyeingMaster() {
 
   const completeTask = (machineId: string, taskId: string, startTime?: string) => {
     const time = new Date().toISOString();
-    let payload: any = { end_time: time, status: 'completed' };
+    let payload: any = { end_time: time, completed_at: time, status: 'completed' };
     if (startTime) {
       payload.duration = calculateDurationString(startTime, time);
     }
@@ -367,7 +375,7 @@ export default function DyeingMaster() {
   const rejectTask = (machineId: string, taskId: string, startTime?: string) => {
     showConfirm('Reject Lot', 'Are you sure this lot is damaged/rejected?', () => {
       const time = new Date().toISOString();
-      let payload: any = { end_time: time, status: 'rejected' };
+      let payload: any = { end_time: time, completed_at: time, status: 'rejected' };
       if (startTime) {
         payload.duration = calculateDurationString(startTime, time);
       }
@@ -542,6 +550,7 @@ export default function DyeingMaster() {
                     const taskIdForApi = task ? (task.id || targetIndexForApi.toString()) : targetIndexForApi.toString();
                     const weightInputKey = `${targetMachineForApi}-${taskIdForApi}`;
                     const updating = isUpdating[taskIdForApi];
+                    const locked = task ? isTaskLocked(task.completed_at) : false;
                     return (
                       <View
                         key={machine.id}
@@ -597,12 +606,14 @@ export default function DyeingMaster() {
                                     <Text style={[styles.cellShadeText, { color: colors.primary, fontSize: 18 }]} numberOfLines={1}>
                                       #{task.shade_number}
                                     </Text>
-                                    <TouchableOpacity onPress={() => {
-                                      setEditingShadeText(task.shade_number);
-                                      setEditingShade(weightInputKey);
-                                    }} style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e2e8f0', borderRadius: 6 }}>
-                                      <Text style={{ color: '#475569', fontSize: 11, fontWeight: 'bold' }}>EDIT</Text>
-                                    </TouchableOpacity>
+                                    {!locked && (
+                                      <TouchableOpacity onPress={() => {
+                                        setEditingShadeText(task.shade_number);
+                                        setEditingShade(weightInputKey);
+                                      }} style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e2e8f0', borderRadius: 6 }}>
+                                        <Text style={{ color: '#475569', fontSize: 11, fontWeight: 'bold' }}>EDIT</Text>
+                                      </TouchableOpacity>
+                                    )}
                                   </View>
 
                                   {editingShade !== weightInputKey && (
@@ -636,10 +647,21 @@ export default function DyeingMaster() {
                                   </Text>
                                 )}
                                 {task.carried_forward && (
-                                  <Text style={{ fontSize: 9, color: '#2563EB', backgroundColor: '#DBEAFE', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', fontWeight: 'bold' }}>
-                                    Carried Forward: {task.original_date}
-                                  </Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                    <View style={{ backgroundColor: '#F59E0B', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, marginRight: 4 }}>
+                                      <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: 'bold' }}>C/F</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 9, color: '#2563EB', fontWeight: 'bold' }}>
+                                      Prev: {task.original_date}
+                                    </Text>
+                                  </View>
                                 )}
+                              </View>
+                            )}
+
+                            {locked && (
+                              <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 4, marginBottom: 6 }}>
+                                <Text style={{ color: '#B91C1C', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>🔒 Locked (24h passed)</Text>
                               </View>
                             )}
 
@@ -687,7 +709,7 @@ export default function DyeingMaster() {
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
-                                    editable={!updating}
+                                    editable={!updating && !locked}
                                   />
                                 </View>
                                 <View style={styles.weightInputWrap}>
@@ -703,7 +725,7 @@ export default function DyeingMaster() {
                                     keyboardType="decimal-pad"
                                     placeholder="0"
                                     placeholderTextColor={colors.textSecondary}
-                                    editable={!updating}
+                                    editable={!updating && !locked}
                                   />
                                 </View>
                               </View>
@@ -715,7 +737,7 @@ export default function DyeingMaster() {
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.primary }]}
                                       onPress={() => startTask(targetMachineForApi, taskIdForApi)}
-                                      disabled={updating}
+                                      disabled={updating || locked}
                                     >
                                       <Text style={styles.actionButtonText}>Start</Text>
                                     </TouchableOpacity>
@@ -745,7 +767,7 @@ export default function DyeingMaster() {
                                     </TouchableOpacity>
                                   </View>
                                 )}
-                                {(task.status === 'completed' || task.status === 'rejected') && (
+                                {(task.status === 'completed' || task.status === 'rejected') && !locked && (
                                   <TouchableOpacity
                                     style={[styles.smallActionButton, { backgroundColor: colors.textSecondary, width: '100%' }]}
                                     onPress={() => revokeTask(targetMachineForApi, taskIdForApi, task.status)}
