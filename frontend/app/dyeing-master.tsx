@@ -708,6 +708,19 @@ export default function DyeingMaster() {
                               </View>
                             )}
 
+                            {/* Admin Planned Values (Reference Only) */}
+                            <View style={{ flexDirection: 'row', backgroundColor: '#eff6ff', padding: 8, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#bfdbfe', justifyContent: 'space-around', alignItems: 'center' }}>
+                              <View style={{ alignItems: 'center' }}>
+                                <Text style={{ fontSize: 9, color: '#1e40af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Admin 2P</Text>
+                                <Text style={{ fontSize: 13, color: '#1d4ed8', fontWeight: '900' }}>{task.springs_2ply || 0}</Text>
+                              </View>
+                              <View style={{ width: 1, height: 20, backgroundColor: '#bfdbfe' }} />
+                              <View style={{ alignItems: 'center' }}>
+                                <Text style={{ fontSize: 9, color: '#1e40af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Admin 3P</Text>
+                                <Text style={{ fontSize: 13, color: '#1d4ed8', fontWeight: '900' }}>{task.springs_3ply || 0}</Text>
+                              </View>
+                            </View>
+
                             <View style={styles.inlineEditor}>
                               <View style={styles.weightInputsContainer}>
                                 <View style={styles.weightInputWrap}>
