@@ -778,13 +778,15 @@ export default function DyeingMaster() {
                                     >
                                       <Text style={styles.actionButtonText}>✓</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                      style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
-                                      onPress={() => rejectTask(targetMachineForApi, taskIdForApi, task.start_time)}
-                                      disabled={updating}
-                                    >
-                                      <Text style={styles.actionButtonText}>✕</Text>
-                                    </TouchableOpacity>
+                                    {!(task.shade_number?.toLowerCase().includes('black return')) && (
+                                      <TouchableOpacity
+                                        style={[styles.smallActionButton, { backgroundColor: colors.danger }]}
+                                        onPress={() => rejectTask(targetMachineForApi, taskIdForApi, task.start_time)}
+                                        disabled={updating}
+                                      >
+                                        <Text style={styles.actionButtonText}>✕</Text>
+                                      </TouchableOpacity>
+                                    )}
                                     <TouchableOpacity
                                       style={[styles.smallActionButton, { backgroundColor: colors.textSecondary }]}
                                       onPress={() => revokeTask(targetMachineForApi, taskIdForApi, task.status)}

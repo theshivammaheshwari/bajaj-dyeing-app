@@ -666,6 +666,12 @@ async def update_machine_task(
         if duration is not None:
             machine_tasks[task_index]["duration"] = duration if duration else None
         if status is not None:
+            # Prevent Black return from being rejected
+            if status == 'rejected':
+                shade_num = str(machine_tasks[task_index].get('shade_number', '')).lower()
+                if 'black return' in shade_num:
+                    raise HTTPException(status_code=400, detail="Black return tasks cannot be rejected")
+            
             machine_tasks[task_index]["status"] = status
             # Automatically clear times when resetting to pending
             if status == 'pending':
@@ -721,20 +727,30 @@ async def calculate_payment(task_id: str, rate_per_kg: float = 6.75):
             combined_tasks = tasks + auto_for_machine
             
             for task in combined_tasks:
+                shade_num = str(task.get('shade_number', '')).lower()
+                is_black_return = 'black return' in shade_num
+                
                 if task.get('status') == 'completed':
-                    # Add machine capacity for each completed task (full rate)
+                    if is_black_return:
+                        # Black return completed = half rate
+                        rejected_kg += capacity
+                        rejected_tasks += 1
+                    else:
+                        # Normal completed = full rate
+                        completed_kg += capacity
+                        completed_tasks += 1
+                elif task.get('status') == 'rejected':
+                    # All rejected tasks = now full rate (as per new rule)
+                    # Requirement says: "Rejected Tasks: salary = weight * 6.75"
+                    # "Completed Tasks (Black return only): salary = weight * 3.375"
+                    # So I will count 'rejected' as 'completed_kg' to get the full rate
                     completed_kg += capacity
                     completed_tasks += 1
-                elif task.get('status') == 'rejected':
-                    # Add machine capacity for rejected task (half rate - black colour)
-                    rejected_kg += capacity
-                    rejected_tasks += 1
         
-        # Rejected lot = black colour = half rate
-        half_rate = rate_per_kg / 2
-        
+        # Calculations
         completed_payment = completed_kg * rate_per_kg
-        rejected_payment = rejected_kg * half_rate
+        rejected_payment = rejected_kg * (rate_per_kg / 2) # This is now ONLY for Black Return Completed
+        
         total_payment = completed_payment + rejected_payment
         total_kg = completed_kg + rejected_kg
         
