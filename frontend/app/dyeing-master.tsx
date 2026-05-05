@@ -110,7 +110,7 @@ export default function DyeingMaster() {
     if (date === new Date().toISOString().split('T')[0]) {
       checkAndRollover();
     } else {
-      fetchTodayTask();
+      fetchTodayTask(true);
     }
   }, [date]);
 
@@ -151,47 +151,58 @@ export default function DyeingMaster() {
     }
   };
 
-  const fetchTodayTask = async () => {
+  const fetchTodayTask = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      if (isInitialLoad) setLoading(true);
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-tasks/${date}`);
       const data = await response.json();
       if (data.id) {
         setDailyTask(data);
         fetchPayment(data.id);
-        initializeWeightInputs(data);
+        initializeWeightInputs(data, isInitialLoad);
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) setLoading(false);
     }
   };
 
-  const initializeWeightInputs = (task: any) => {
-    const inputs: any = {};
-    const machines = ['m1', 'm2', 'm3', 'm4', 'm5'];
-    machines.forEach(machineId => {
-      const tasks = task[machineId] || [];
-      tasks.forEach((t: any, index: number) => {
-        const key = `${machineId}-${index}`;
-        inputs[key] = {
-          ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
-          ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
-        };
+  const initializeWeightInputs = (task: any, isInitialLoad: boolean = false) => {
+    setWeightInputs(prev => {
+      // If it's a fresh load (like date change), start with empty.
+      // Otherwise, we merge with current local "draft" values.
+      const nextInputs = isInitialLoad ? {} : { ...prev };
+      
+      const machines = ['m1', 'm2', 'm3', 'm4', 'm5'];
+      machines.forEach(machineId => {
+        const tasks = task[machineId] || [];
+        tasks.forEach((t: any, index: number) => {
+          const key = `${machineId}-${t.id || index}`;
+          
+          // Only overwrite if we don't have a local draft OR it's a fresh page load
+          if (isInitialLoad || !nextInputs[key]) {
+            nextInputs[key] = {
+              ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
+              ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
+            };
+          }
+        });
       });
+  
+      const autoTasks = task.automatic_tasks || [];
+      autoTasks.forEach((t: any, index: number) => {
+        const key = `automatic_tasks-${t.id || index}`;
+        if (isInitialLoad || !nextInputs[key]) {
+          nextInputs[key] = {
+            ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
+            ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
+          };
+        }
+      });
+  
+      return nextInputs;
     });
-
-    const autoTasks = task.automatic_tasks || [];
-    autoTasks.forEach((t: any, index: number) => {
-      const key = `automatic_tasks-${index}`;
-      inputs[key] = {
-        ply2: t.ply2_weight && t.ply2_weight > 0 ? t.ply2_weight.toFixed(3) : '',
-        ply3: t.ply3_weight && t.ply3_weight > 0 ? t.ply3_weight.toFixed(3) : '',
-      };
-    });
-
-    setWeightInputs(inputs);
   };
 
   const handleAssignAutomaticToMachine = async (taskIndex: number) => {
@@ -256,7 +267,10 @@ export default function DyeingMaster() {
     const key = `${machineId}-${taskId}`;
     setWeightInputs(prev => ({
       ...prev,
-      [key]: { ...prev[key], [field]: value },
+      [key]: { 
+        ...(prev[key] || { ply2: '', ply3: '' }), 
+        [field]: value 
+      },
     }));
   };
 
@@ -320,8 +334,8 @@ export default function DyeingMaster() {
         { method: 'PUT' }
       );
       if (!res.ok) throw new Error('Update failed');
-      // Background fetch to ensure consistency later
-      fetchTodayTask();
+      // Background fetch to ensure consistency later, but don't reset inputs
+      fetchTodayTask(false);
     } catch (error) {
       console.error('Error updating:', error);
       showAlert('Error', 'Update failed');
