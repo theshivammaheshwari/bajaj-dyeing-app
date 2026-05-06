@@ -824,18 +824,18 @@ export default function DyeingMaster() {
                 <View style={styles.paymentFlex}>
                   <View style={[styles.paymentStat, { backgroundColor: '#F0FFF4', borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
-                    <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment}</Text>
-                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg} kg</Text>
+                    <Text style={[styles.statValue, { color: colors.success }]}>₹{payment.completed_payment ?? 0}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.completed_kg ?? 0} kg</Text>
                   </View>
                   <View style={[styles.paymentStat, { backgroundColor: '#FFF5F5', borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rejected</Text>
-                    <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment}</Text>
-                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg} kg</Text>
+                    <Text style={[styles.statValue, { color: colors.danger }]}>₹{payment.rejected_payment ?? 0}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.rejected_kg ?? 0} kg</Text>
                   </View>
                   <View style={[styles.paymentStat, { backgroundColor: colors.primaryLight, borderRadius: 12, padding: 12 }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
-                    <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment}</Text>
-                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg} kg</Text>
+                    <Text style={[styles.statValueTotal, { color: colors.primary }]}>₹{payment.total_payment ?? 0}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>{payment.total_kg ?? 0} kg</Text>
                   </View>
                 </View>
               </View>

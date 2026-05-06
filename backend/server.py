@@ -753,6 +753,7 @@ async def calculate_payment(task_id: str, rate_per_kg: float = 6.75):
         
         total_payment = completed_payment + rejected_payment
         total_kg = completed_kg + rejected_kg
+        half_rate = rate_per_kg / 2
         
         return {
             "total_kg": round(total_kg, 2),
