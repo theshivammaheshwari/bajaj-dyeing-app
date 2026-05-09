@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 
-const ADMIN_PASSWORD = '3112';
+const ADMIN_PASSWORD = '1987';
 const USER_PASSWORD = '3020';
 
 export default function Login() {
@@ -46,7 +46,7 @@ export default function Login() {
       try {
         await AsyncStorage.setItem('isAuthenticated', 'true');
         await AsyncStorage.setItem('userRole', role);
-        
+
         setTimeout(() => {
           if (typeof window !== 'undefined') {
             window.location.href = role === 'admin' ? '/' : '/dyeing-master';
@@ -95,10 +95,10 @@ export default function Login() {
               <TextInput
                 style={[
                   styles.input,
-                  { 
-                    color: colors.text, 
-                    backgroundColor: colors.inputBackground, 
-                    borderColor: error ? colors.danger : colors.border 
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.inputBackground,
+                    borderColor: error ? colors.danger : colors.border
                   }
                 ]}
                 placeholder="Enter password"
